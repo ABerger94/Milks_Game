@@ -31,3 +31,15 @@
 - L24 station is static at (1150,360) — no accidental instant win.
 - Known design intent: black-hole levels (9, 13, 15, 20) have narrow win
   windows (~4–12°); the live trajectory preview is the intended equalizer.
+
+## v0.1.1 — 2026-09-16 — relative (thumbstick) aiming
+- First human playtest feedback (Alek): aiming required dragging the thumb to
+  the screen edge whenever the ship sat near one — steering felt bad.
+- Aiming is now relative: touch down anywhere and the drag vector is measured
+  from the touch-down point, not from the ship. Same slingshot feel (pull
+  back, release, ship flies the opposite way), same AIM_K, same preview and
+  flight integrator — the ship and the trajectory stay visible under the
+  thumb, and full power needs only ~26% of screen width of thumb travel.
+- Elastic band visual redrawn along the pull direction from the ship;
+  max-power ring unchanged (still reads as "pull this far for full power").
+- Title hint updated: "touch anywhere · drag back · release to launch".

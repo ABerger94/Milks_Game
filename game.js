@@ -285,6 +285,7 @@ const G = {
   levelShards: null,     // shard indices banked across attempts this level
   levelDepots: null,     // depot indices used up across attempts this level
   aiming: false,
+  aimStart: { x: 0, y: 0 },   // touch-down point: drag is relative, thumbstick-style
   aimCur: { x: 0, y: 0 },
   particles: [],
   shake: 0,
@@ -479,8 +480,10 @@ function canvasPos(e) {
   return [e.clientX, e.clientY];
 }
 function aimVelocity() {
-  const a = G.att;
-  let vx = (a.x - G.aimCur.x) * AIM_K, vy = (a.y - G.aimCur.y) * AIM_K;
+  // Relative (thumbstick) aiming: the pull vector is measured from the
+  // touch-down point, so the thumb never has to travel to the screen edge.
+  // Slingshot feel is preserved: pull back, the ship launches the opposite way.
+  let vx = (G.aimStart.x - G.aimCur.x) * AIM_K, vy = (G.aimStart.y - G.aimCur.y) * AIM_K;
   const sp = Math.hypot(vx, vy);
   if (sp > MAXV) { vx = vx / sp * MAXV; vy = vy / sp * MAXV; }
   return { vx, vy, sp: Math.min(sp, MAXV) };
@@ -505,6 +508,7 @@ canvas.addEventListener('pointerdown', e => {
   const [px, py] = [e.clientX, e.clientY];
   const [wx, wy] = toWorld(px, py);
   G.aiming = true;
+  G.aimStart.x = wx; G.aimStart.y = wy;
   G.aimCur.x = wx; G.aimCur.y = wy;
 });
 window.addEventListener('pointermove', e => {
@@ -820,10 +824,11 @@ function drawAim() {
   const a = G.att, lv = LEVELS[G.levelIndex];
   const v = aimVelocity();
   const sx = a.x, sy = a.y;
-  // elastic
+  // elastic: drawn along the pull direction from the ship
+  const pullX = G.aimCur.x - G.aimStart.x, pullY = G.aimCur.y - G.aimStart.y;
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
-  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(G.aimCur.x, G.aimCur.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + pullX, sy + pullY); ctx.stroke();
   ctx.setLineDash([]);
   // max-power ring
   ctx.strokeStyle = 'rgba(255,255,255,0.18)';

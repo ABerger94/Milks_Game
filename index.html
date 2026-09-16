@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#070b22">
+<title>Milk Run — Cosmic Delivery</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="hud-buttons">
+    <button id="btn-restart" title="Restart level (R)">&#8635;</button>
+    <button id="btn-mute" title="Mute (M)">&9834;</button>
+    <button id="btn-pause" title="Pause (Esc)">&#10074;&#10074;</button>
+  </div>
+</div>
+
+<div id="overlay-title" class="overlay">
+  <div class="panel title-panel">
+    <div class="kicker">THE LAST MILKMAN IN THE GALAXY</div>
+    <h1 class="game-title"><span>MILK</span> RUN</h1>
+    <div class="subtitle">cosmic delivery</div>
+    <p class="blurb">Slingshot your ship around planets.<br>Thread black holes. Mind the comets.<br>Deliver the milk.</p>
+    <button id="btn-play" class="big-btn">TAP TO START</button>
+    <button id="btn-levels-title" class="link-btn">level select</button>
+    <div class="hint">drag back from the ship &middot; release to launch</div>
+  </div>
+</div>
+
+<div id="overlay-levels" class="overlay hidden">
+  <div class="panel wide">
+    <h2>CHOOSE YOUR ROUTE</h2>
+    <div id="total-stars" class="total-stars"></div>
+    <div id="level-grid" class="level-grid"></div>
+    <button id="btn-back-title" class="link-btn">back to title</button>
+  </div>
+</div>
+
+<div id="overlay-pause" class="overlay hidden">
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <button id="btn-resume" class="big-btn">RESUME</button>
+    <button id="btn-restart2" class="menu-btn">restart level</button>
+    <button id="btn-quit" class="menu-btn">level select</button>
+  </div>
+</div>
+
+<div id="overlay-win" class="overlay hidden">
+  <div class="panel">
+    <h2>DELIVERED!</h2>
+    <div id="win-stars" class="win-stars"></div>
+    <div id="win-sub" class="sub"></div>
+    <button id="btn-next" class="big-btn">NEXT LEVEL &rarr;</button>
+    <button id="btn-replay" class="menu-btn">replay</button>
+    <button id="btn-levels-win" class="menu-btn">level select</button>
+  </div>
+</div>
+
+<div id="overlay-fail" class="overlay hidden">
+  <div class="panel">
+    <h2 class="fail-h">DELIVERY FAILED</h2>
+    <div id="fail-sub" class="sub"></div>
+    <button id="btn-retry" class="big-btn">RETRY</button>
+    <button id="btn-levels-fail" class="menu-btn">level select</button>
+  </div>
+</div>
+
+<script src="levels.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

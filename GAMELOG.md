@@ -133,3 +133,38 @@
 - The title + sector/par lines now center in the actual gap between the milk
   bottles' right edge and the top-right buttons on narrow (<700px) screens,
   with ellipsis truncation as a backstop. Wide screens unchanged.
+
+## v0.6 — 2026-09-16 — New mechanics: bounce asteroids + shard-gated stations
+- Two new mechanics (Alek: "make them harder, add new things"):
+  - **Bounce asteroids** (`bounce: true`): teal halo, reflect the ship with
+    0.75 restitution instead of killing it. Dedicated bounce sfx, particles,
+    screen shake. Key physics finding: a rightward ship always reverses off
+    a rock — bounce levels are designed as there-and-back shots, not banks.
+  - **Shard-gated stations** (`station.gate: N`): amber locked station with
+    rotating dashed ring + shard pips; opens only when N shards are banked.
+    Denied/unlock sfx, intro-card shows the requirement.
+- Save migration: arrays sized to LEVELS.length; old 24-entry saves padded,
+  never wiped. Ghost/star data sanitized.
+- Verified: 7 headless mechanics tests (gate deny/threshold/banked-unlock,
+  bounce reflect, deadly rocks still lethal).
+
+## v0.6.1 — 2026-09-16 — Gate state bugfixes
+- Banked shards injected into a fresh attempt did not recalculate `gateOpen`
+  — the gate stayed locked until another shard was grabbed. Fixed: gate state
+  recalculated after banked shards are injected in retryAttempt().
+- renderWorld double-counted banked shards in the gate pip display
+  (`att.shardsGot` already includes them). Fixed: use att.shardsGot.size.
+
+## v0.7 — 2026-09-16 — Sector 4: Abyss (levels 25–36)
+- New sector "Abyss — the hard stuff", unlocked after level 24. 12 levels:
+  25 Trampoline (bounce reversal + gate intro), 26 Boomerang (bounce
+  there-and-back), 27 Locked Door (gate intro), 28 Toll Booth (BH slingshot
+  + gate:3), 29 Thread the Needle (diagonal asteroid thread), 30 Event
+  Horizon (BH slingshot + bounce backstop), 31 The Vault (wormhole bypass
+  + gate:2), 32 Orbit Decay (orbiting station + comet), 33 Comet Crossfire,
+  34 Gauntlet II (BH slalom), 35 Wormhole Chain (2 WH pairs + gate:2),
+  36 Abyssal Heart (finale: BHs + comet + orbiting gate:3 station).
+- Existing 24 levels untouched (geometry/physics frozen).
+- Solver verification: 35/36 levels have single-launch 3-star paths
+  (verified headlessly, all shards + win). L16 Rogue's End 3-stars via
+  2 launches (shard-bank run + win run, 2 <= par 3) — verified multi-launch.

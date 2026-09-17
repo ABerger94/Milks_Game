@@ -63,3 +63,21 @@
   dismissIntro no-op outside intro, HUD hidden during card).
 - Not headless-testable: actual tap feel / card timing on a real phone —
   Alek is play-testing live, so this will get a human read tonight.
+
+## v0.3 — 2026-09-16 — juice overhaul
+- Expanding shockwave rings: deliveries fire two staggered rings (cyan + gold),
+  wormhole warps and fuel-depot pickups each fire one. New `G.rings` array with
+  ease-out expansion, capped at 24, drawn above the world.
+- Wormhole redraw: 3 spiral arms winding inward and rotating with time, plus a
+  counter-rotating dashed shimmer ring and a pulsing core.
+- Black holes: bright accretion-disk clumps orbiting just outside the event
+  horizon, plus ambient purple/white inflow sparks that spiral in while you
+  aim or fly.
+- Shards: idle twinkle sparkles, and "magnet streaks" — when the flying ship
+  passes within 150 units of an uncollected shard, sparkles stream from the
+  shard toward the ship.
+- Comets: warm head-glow behind each comet (existing dust trail kept).
+- No physics or level-geometry changes; the v0.1 solver's 3-star verification
+  still holds, so the solver was not re-run. `node --check` clean.
+- Not headless-testable: subjective feel of the new effects (timing, density,
+  whether the magnet streaks read clearly) — for Alek's live play-test.

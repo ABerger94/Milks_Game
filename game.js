@@ -288,6 +288,7 @@ const G = {
   aimStart: { x: 0, y: 0 },   // touch-down point: drag is relative, thumbstick-style
   aimCur: { x: 0, y: 0 },
   particles: [],
+  rings: [],              // expanding shockwave rings (visual juice)
   shake: 0,
   time: 0,
   idleT: 0,              // title-screen animation clock
@@ -373,6 +374,7 @@ function startLevel(i, withIntro) {
   G.levelShards = new Set();
   G.levelDepots = new Set();
   G.particles = [];
+  G.rings = [];
   G.shake = 0;
   G.aiming = false;
   if (withIntro) { showIntroCard(lv, i); return; }
@@ -422,7 +424,10 @@ function onWin() {
   if (stars > save.stars[G.levelIndex]) { save.stars[G.levelIndex] = stars; writeSave(); }
   G.screen = 'win';
   sDelivery();
-  burst(stationPos(lv, att.t).x, stationPos(lv, att.t).y, 70, ['#ffffff', '#ffe27f', '#7fe2ff']);
+  const stp = stationPos(lv, att.t);
+  burst(stp.x, stp.y, 70, ['#ffffff', '#ffe27f', '#7fe2ff']);
+  shockwave(stp.x, stp.y, 175, '127,226,255');
+  shockwave(stp.x, stp.y, 110, '255,226,127');
   const wstars = $('win-stars');
   wstars.innerHTML = '';
   for (let i = 0; i < 3; i++) {
@@ -462,6 +467,31 @@ function burst(x, y, n, colors) {
       colors[i % colors.length], 2.5);
   }
 }
+/* Expanding shockwave rings (deliveries, warps, depots). */
+function shockwave(x, y, maxR, color) {
+  if (G.rings.length > 24) G.rings.shift();
+  G.rings.push({ x, y, r: 6, maxR: maxR || 120, life: 0.55, maxLife: 0.55, color: color || '255,255,255' });
+}
+function updateFx(dt) {
+  for (let i = G.rings.length - 1; i >= 0; i--) {
+    const g = G.rings[i];
+    g.life -= dt;
+    if (g.life <= 0) { G.rings.splice(i, 1); continue; }
+    const f = 1 - g.life / g.maxLife;
+    g.r = 6 + (g.maxR - 6) * (1 - Math.pow(1 - f, 2.2));   // fast start, soft landing
+  }
+}
+function drawRings() {
+  for (const g of G.rings) {
+    const a = g.life / g.maxLife;
+    ctx.save();
+    ctx.globalAlpha = a * 0.85;
+    ctx.strokeStyle = 'rgba(' + g.color + ',1)';
+    ctx.lineWidth = 2 + 5 * a;
+    ctx.beginPath(); ctx.arc(g.x, g.y, g.r, 0, 6.283); ctx.stroke();
+    ctx.restore();
+  }
+}
 function updateParticles(dt) {
   const ps = G.particles;
   for (let i = ps.length - 1; i >= 0; i--) {
@@ -493,6 +523,26 @@ function updateParticles(dt) {
           0.5, 2.5, '#ffd9a0', 1);
       }
     }
+    // ambient juice: black-hole inflow sparks + shard twinkles / magnet streaks
+    const lv = LEVELS[G.levelIndex], a = G.att;
+    for (const b of (lv.blackholes || [])) {
+      if (Math.random() < 0.35) {
+        const ang = Math.random() * 6.283, rad = b.r * (1.6 + Math.random() * 1.2);
+        spawnP(b.x + Math.cos(ang) * rad, b.y + Math.sin(ang) * rad,
+          -Math.sin(ang) * 130 - Math.cos(ang) * 50, Math.cos(ang) * 130 - Math.sin(ang) * 50,
+          0.5, 2.2, Math.random() < .5 ? '#c99fff' : '#ffffff', 0.4);
+      }
+    }
+    (lv.shards || []).forEach((s, i) => {
+      if (a.shardsGot.has(i)) return;
+      if (Math.random() < 0.08)
+        spawnP(s.x + (Math.random() - .5) * 20, s.y + (Math.random() - .5) * 20, 0, -14, 0.45, 1.8, '#e8fbff', 0);
+      if (a.flying && !a.dead) {
+        const dx = a.x - s.x, dy = a.y - s.y, d = Math.hypot(dx, dy);
+        if (d < 150 && d > 4 && Math.random() < 0.5)
+          spawnP(s.x, s.y, dx / d * 220, dy / d * 220, 0.35, 2, '#aef4ff', 0);
+      }
+    });
   }
 }
 
@@ -587,6 +637,7 @@ function retryAttempt() {
   for (const i of G.levelDepots) G.att.depotsUsed.add(i);
   G.aiming = false;
   G.particles = [];
+  G.rings = [];
   G.screen = 'aim';
   showOnly(null);
 }
@@ -598,13 +649,17 @@ function handleAttemptEvents() {
   // Bank pickups at level scope so they survive failed attempts.
   for (const i of a.shardsGot) G.levelShards.add(i);
   for (const i of a.depotsUsed) G.levelDepots.add(i);
-  if (a.warped) { a.warped = false; sWormhole(); burst(a.x, a.y, 24, ['#7fffe2', '#ff7fe2', '#ffffff']); }
+  if (a.warped) {
+    a.warped = false; sWormhole();
+    burst(a.x, a.y, 24, ['#7fffe2', '#ff7fe2', '#ffffff']);
+    shockwave(a.x, a.y, 95, '127,255,226');
+  }
   if (a.depotHit) {
     a.depotHit = false;
     G.launchesLeft = Math.min(9, G.launchesLeft + 1);
     sDepot();
     const d = LEVELS[G.levelIndex].depots[[...a.depotsUsed].pop()];
-    if (d) burst(d.x, d.y, 20, ['#9fff9f', '#ffffff']);
+    if (d) { burst(d.x, d.y, 20, ['#9fff9f', '#ffffff']); shockwave(d.x, d.y, 80, '159,255,159'); }
   }
   if (a.shardHit >= 0) {
     const s = LEVELS[G.levelIndex].shards[a.shardHit];
@@ -638,6 +693,7 @@ function frame(now) {
     if (G.screen === 'aim' && G.launchesLeft <= 0 && !G.att.flying && !G.att.dead) onFail('nolaunch');
   }
   updateParticles(dt);
+  updateFx(dt);
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.5);
   render();
 }
@@ -699,6 +755,16 @@ function drawBlackHole(b) {
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 1.7, 0, 6.283); ctx.fill();
   ctx.restore();
+  // accretion disk: bright orbiting clumps just outside the event horizon
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,214,150,0.9)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  const t2 = G.time * 3.4;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 1.22, t2 + i * 1.571, t2 + i * 1.571 + 0.7);
+    ctx.stroke();
+  }
+  ctx.restore();
   ctx.strokeStyle = '#ffb27f'; ctx.lineWidth = 3;
   const t = G.time * 2;
   for (let i = 0; i < 3; i++) {
@@ -741,15 +807,35 @@ function drawRock(x, y, r, seed, rot) {
 
 function drawWormhole(w, idx) {
   const c = WH_COLORS[idx % WH_COLORS.length];
+  const t = G.time;
   ctx.save();
-  ctx.shadowColor = c; ctx.shadowBlur = 22;
-  ctx.strokeStyle = c; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.arc(w.x, w.y, w.r, G.time * 1.5, G.time * 1.5 + 4.2); ctx.stroke();
-  ctx.lineWidth = 2; ctx.globalAlpha = 0.7;
-  ctx.beginPath(); ctx.arc(w.x, w.y, w.r * 0.62, -G.time * 2.2, -G.time * 2.2 + 3.6); ctx.stroke();
+  ctx.lineCap = 'round';
+  // swirl: 3 spiral arms winding inward, rotating with time
+  ctx.strokeStyle = c;
+  for (let arm = 0; arm < 3; arm++) {
+    const a0 = t * 3.2 + arm * 2.094;
+    ctx.globalAlpha = 0.85; ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (let s = 0; s <= 20; s++) {
+      const f = s / 20;
+      const ang = a0 + f * 4.2;
+      const rad = w.r * (1 - f * 0.72);
+      const px = w.x + Math.cos(ang) * rad, py = w.y + Math.sin(ang) * rad;
+      if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  // counter-rotating shimmer ring
+  ctx.globalAlpha = 0.35; ctx.lineWidth = 2;
+  ctx.setLineDash([10, 14]);
+  ctx.beginPath(); ctx.arc(w.x, w.y, w.r * 1.12, -t * 1.4, -t * 1.4 + 6.283); ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
+  // pulsing core
+  const pulse = 0.65 + 0.35 * Math.sin(t * 5 + idx);
   const g = ctx.createRadialGradient(w.x, w.y, 1, w.x, w.y, w.r * 0.6);
-  g.addColorStop(0, 'rgba(255,255,255,0.85)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  g.addColorStop(0, 'rgba(255,255,255,' + (0.7 * pulse + 0.25) + ')');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(w.x, w.y, w.r * 0.6, 0, 6.283); ctx.fill();
 }
@@ -926,7 +1012,13 @@ function renderWorld(lv, att, t) {
   (lv.planets || []).forEach((p, i) => drawPlanet(p, i));
   (lv.blackholes || []).forEach(drawBlackHole);
   (lv.asteroids || []).forEach((a, i) => drawRock(a.x, a.y, a.r, i + 1, t * 0.15 * (i % 2 ? 1 : -1)));
-  (att ? att.comets : (lv.comets || [])).forEach((c, i) => drawRock(c.x, c.y, c.r, 40 + i, t * 0.8));
+  (att ? att.comets : (lv.comets || [])).forEach((c, i) => {
+    const cg = ctx.createRadialGradient(c.x, c.y, 1, c.x, c.y, c.r * 2.4);
+    cg.addColorStop(0, 'rgba(255,190,120,0.5)'); cg.addColorStop(1, 'rgba(255,190,120,0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 2.4, 0, 6.283); ctx.fill();
+    drawRock(c.x, c.y, c.r, 40 + i, t * 0.8);
+  });
   (lv.depots || []).forEach((d, i) => drawDepot(d, att ? att.depotsUsed.has(i) : false));
   (lv.shards || []).forEach((s, i) => { if (!(att && att.shardsGot.has(i))) drawShard(s, t); });
   drawStation(stationPos(lv, att ? att.t : t), t);
@@ -935,6 +1027,7 @@ function renderWorld(lv, att, t) {
     drawShip(att.x, att.y, att.vx, att.vy, att.flying, t);
   }
   drawParticles();
+  drawRings();
 }
 
 function renderIdle(t) {

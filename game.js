@@ -55,7 +55,9 @@ function newAttempt(level) {
     whCooldown: 0, dead: false, deadWhy: null, won: false,
     stallT: 0,
     // transient event flags consumed by the presentation layer
-    warped: false, depotHit: false, shardHit: -1
+    warped: false, depotHit: false, shardHit: -1,
+    bounced: false, gateDenied: false, gateUnlocked: false, gateIn: false,
+    gateOpen: !(level.station && level.station.gate > 0)
   };
 }
 
@@ -112,7 +114,22 @@ function stepAttempt(st, level, dt) {
   for (const b of (level.blackholes || []))
     if (hitR(b.x, b.y, b.r)) { st.dead = true; st.deadWhy = 'blackhole'; return 'dead'; }
   for (const at of (level.asteroids || []))
-    if (hitR(at.x, at.y, at.r + SHIP_R - 2)) { st.dead = true; st.deadWhy = 'asteroid'; return 'dead'; }
+    if (hitR(at.x, at.y, at.r + SHIP_R - 2)) {
+      if (at.bounce) {
+        // trampoline rock: reflect velocity about the surface normal, damped
+        const dx = st.x - at.x, dy = st.y - at.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const nx = dx / d, ny = dy / d;
+        st.x = at.x + nx * (at.r + SHIP_R - 1);
+        st.y = at.y + ny * (at.r + SHIP_R - 1);
+        const vn = st.vx * nx + st.vy * ny;
+        if (vn < 0) {
+          st.vx -= 1.75 * vn * nx;   // restitution ~0.75
+          st.vy -= 1.75 * vn * ny;
+          st.bounced = true;
+        }
+      } else { st.dead = true; st.deadWhy = 'asteroid'; return 'dead'; }
+    }
   for (const c of st.comets)
     if (hitR(c.x, c.y, c.r + SHIP_R - 2)) { st.dead = true; st.deadWhy = 'comet'; return 'dead'; }
 
@@ -124,9 +141,16 @@ function stepAttempt(st, level, dt) {
     if (st.shardsGot.has(i)) return;
     if (hitR(s.x, s.y, 30)) { st.shardsGot.add(i); st.shardHit = i; }
   });
+  // shard gate: station unlocks once enough shards are held (banked shards count)
+  const gate = (level.station && level.station.gate) || 0;
+  if (gate > 0 && !st.gateOpen && st.shardsGot.size >= gate) { st.gateOpen = true; st.gateUnlocked = true; }
 
   const sp2 = stationPos(level, st.t);
-  if (hitR(sp2.x, sp2.y, sp2.r)) { st.won = true; return 'win'; }
+  if (hitR(sp2.x, sp2.y, sp2.r)) {
+    if (st.gateOpen) { st.won = true; return 'win'; }
+    // locked station: harmless pass-through, one denied event per entry
+    if (!st.gateIn) { st.gateIn = true; st.gateDenied = true; }
+  } else st.gateIn = false;
 
   if (st.x < -BOUND || st.x > WORLD_W + BOUND || st.y < -BOUND || st.y > WORLD_H + BOUND) {
     st.dead = true; st.deadWhy = 'lost'; return 'dead';
@@ -169,17 +193,26 @@ function simulateLaunch(level, angle, speed, maxT) {
 /*__DOM__*/
 /* ================= SAVE ================= */
 const SAVE_KEY = 'milkrun_save_v1';
-let save = { stars: new Array(24).fill(0), ghosts: new Array(24).fill(null), muted: false };
+let save = { stars: [], ghosts: [], muted: false };
+// Sized to the level list; old saves of any length are padded, never wiped.
+function sizeSaveArrays() {
+  while (save.stars.length < LEVELS.length) save.stars.push(0);
+  while (save.ghosts.length < LEVELS.length) save.ghosts.push(null);
+  save.stars.length = LEVELS.length;
+  save.ghosts.length = LEVELS.length;
+}
+sizeSaveArrays();
 function loadSave() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (Array.isArray(s.stars) && s.stars.length === 24) save.stars = s.stars.map(n => Math.max(0, Math.min(3, n | 0)));
+      if (Array.isArray(s.stars)) save.stars = s.stars.map(n => Math.max(0, Math.min(3, n | 0)));
       // ghost: best winning launch vector per level {vx,vy,stars} | null
-      if (Array.isArray(s.ghosts) && s.ghosts.length === 24)
+      if (Array.isArray(s.ghosts))
         save.ghosts = s.ghosts.map(g => (g && isFinite(g.vx) && isFinite(g.vy)) ? { vx: +g.vx, vy: +g.vy, stars: g.stars | 0 } : null);
       save.muted = !!s.muted;
+      sizeSaveArrays();
     }
   } catch (e) { /* storage unavailable: play session-only */ }
 }
@@ -275,6 +308,9 @@ const sWormhole = () => {
 };
 const sDepot    = () => { [392, 523, 659].forEach((f, i) => AudioSys.tone(f, 0.14, 'triangle', 0.16, null, i * 0.07)); };
 const sDenied   = () => AudioSys.tone(160, 0.15, 'square', 0.1, 110);
+const sBounce   = () => { AudioSys.tone(320, 0.16, 'sine', 0.2, 95); AudioSys.noise(0.08, 0.12, 1400); };
+const sGateDeny = () => { AudioSys.tone(150, 0.18, 'square', 0.12, 85); AudioSys.noise(0.1, 0.1, 500); };
+const sGateOpen = () => { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => AudioSys.tone(f, 0.2, 'triangle', 0.15, null, i * 0.09)); };
 // Black-hole proximity rumble: low growl while flying near one, throttled.
 function maybeRumble(dt) {
   if (G.screen !== 'flying' || !G.att || G.att.dead) { G.rumbleT = 0; return; }
@@ -426,7 +462,9 @@ function startLevel(i, withIntro) {
 function showIntroCard(lv, i) {
   $('intro-kicker').textContent = 'LEVEL ' + (i + 1) + ' · ' + SECTORS[lv.sector].name.toUpperCase();
   $('intro-name').textContent = lv.name;
-  $('intro-stats').textContent = lv.launches + ' launches · par ' + lv.par + ' · ' + lv.shards.length + ' shards';
+  let stats = lv.launches + ' launches · par ' + lv.par + ' · ' + lv.shards.length + ' shards';
+  if (lv.station.gate) stats += ' · station locked: ' + lv.station.gate + '◆';
+  $('intro-stats').textContent = stats;
   const tip = $('intro-tip');
   tip.textContent = lv.tip || '';
   tip.style.display = lv.tip ? '' : 'none';
@@ -713,6 +751,19 @@ function handleAttemptEvents() {
     sPickup(a.shardsGot.size - 1);
     if (s) burst(s.x, s.y, 14, ['#aef4ff', '#ffffff']);
   }
+  if (a.bounced) {
+    a.bounced = false; sBounce(); G.shake = Math.max(G.shake, 0.25);
+    burst(a.x, a.y, 16, ['#7fffe2', '#ffffff']);
+  }
+  if (a.gateDenied) {
+    a.gateDenied = false; sGateDeny(); G.shake = Math.max(G.shake, 0.35);
+  }
+  if (a.gateUnlocked) {
+    a.gateUnlocked = false; sGateOpen();
+    const sp = stationPos(LEVELS[G.levelIndex], a.t);
+    shockwave(sp.x, sp.y, 120, '255,210,120');
+    burst(sp.x, sp.y, 26, ['#ffd778', '#ffffff']);
+  }
   return null;
 }
 
@@ -850,6 +901,24 @@ function drawRock(x, y, r, seed, rot) {
   ctx.fillStyle = g; ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.restore();
+
+// trampoline rock: teal glow ring + chevrons so it reads as bouncy, not deadly
+function drawBounceHalo(a, t) {
+  ctx.save();
+  ctx.shadowColor = '#7fffe2'; ctx.shadowBlur = 18;
+  ctx.strokeStyle = 'rgba(127,255,226,0.85)'; ctx.lineWidth = 3;
+  const wob = 1 + 0.06 * Math.sin(t * 4 + a.x);
+  ctx.beginPath(); ctx.arc(a.x, a.y, (a.r + 7) * wob, 0, 6.283); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(127,255,226,0.5)'; ctx.lineWidth = 2;
+  for (let k = 0; k < 3; k++) {
+    const ang = t * 1.5 + k * 2.094;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.r + 7, ang, ang + 0.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 }
 
 function drawWormhole(w, idx) {
@@ -915,19 +984,33 @@ function drawShard(s, t) {
   ctx.restore();
 }
 
-function drawStation(sp, t) {
+function drawStation(sp, t, lock) {
+  // lock: null | { remaining } — a shard-gated station shows an amber locked
+  // ring plus diamond pips for the shards still needed.
+  const locked = !!(lock && lock.remaining > 0);
   ctx.save();
-  ctx.shadowColor = '#7fe2ff'; ctx.shadowBlur = 26;
-  ctx.strokeStyle = '#d8f6ff'; ctx.lineWidth = 5;
+  ctx.shadowColor = locked ? '#ffb347' : '#7fe2ff'; ctx.shadowBlur = 26;
+  ctx.strokeStyle = locked ? '#ffcf7f' : '#d8f6ff'; ctx.lineWidth = 5;
   ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r, 0, 6.283); ctx.stroke();
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = 'rgba(127,226,255,0.75)'; ctx.lineWidth = 3;
+  ctx.strokeStyle = locked ? 'rgba(255,180,80,0.7)' : 'rgba(127,226,255,0.75)'; ctx.lineWidth = 3;
   const off = t * 1.2;
   for (let i = 0; i < 4; i++) {
     ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r - 11, off + i * 1.57, off + i * 1.57 + 0.9); ctx.stroke();
   }
+  if (locked) {
+    ctx.strokeStyle = 'rgba(255,180,80,0.9)'; ctx.lineWidth = 3;
+    ctx.setLineDash([10, 8]); ctx.lineDashOffset = -t * 30;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r + 12, 0, 6.283); ctx.stroke();
+    ctx.setLineDash([]);
+    const n = lock.remaining;
+    ctx.fillStyle = '#ffd778'; ctx.font = '700 15px -apple-system, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('◆'.repeat(Math.min(6, n)) + (n > 6 ? '+' : ''), sp.x, sp.y - sp.r - 26);
+  }
   const pulse = 0.5 + 0.5 * Math.sin(t * 3);
-  ctx.fillStyle = 'rgba(216,246,255,' + (0.35 + pulse * 0.4) + ')';
+  ctx.fillStyle = locked ? 'rgba(255,207,127,' + (0.3 + pulse * 0.3) + ')'
+                         : 'rgba(216,246,255,' + (0.35 + pulse * 0.4) + ')';
   ctx.beginPath(); ctx.arc(sp.x, sp.y, 7 + pulse * 3, 0, 6.283); ctx.fill();
   ctx.restore();
 }
@@ -1099,7 +1182,10 @@ function renderWorld(lv, att, t) {
   (lv.wormholes || []).forEach((w, i) => drawWormhole(w, i));
   (lv.planets || []).forEach((p, i) => drawPlanet(p, i));
   (lv.blackholes || []).forEach(drawBlackHole);
-  (lv.asteroids || []).forEach((a, i) => drawRock(a.x, a.y, a.r, i + 1, t * 0.15 * (i % 2 ? 1 : -1)));
+  (lv.asteroids || []).forEach((a, i) => {
+    drawRock(a.x, a.y, a.r, i + 1, t * 0.15 * (i % 2 ? 1 : -1));
+    if (a.bounce) drawBounceHalo(a, t);
+  });
   (att ? att.comets : (lv.comets || [])).forEach((c, i) => {
     const cg = ctx.createRadialGradient(c.x, c.y, 1, c.x, c.y, c.r * 2.4);
     cg.addColorStop(0, 'rgba(255,190,120,0.5)'); cg.addColorStop(1, 'rgba(255,190,120,0)');
@@ -1109,7 +1195,11 @@ function renderWorld(lv, att, t) {
   });
   (lv.depots || []).forEach((d, i) => drawDepot(d, att ? att.depotsUsed.has(i) : false));
   (lv.shards || []).forEach((s, i) => { if (!(att && att.shardsGot.has(i))) drawShard(s, t); });
-  drawStation(stationPos(lv, att ? att.t : t), t);
+  const gateN = (lv.station && lv.station.gate) || 0;
+  const banked = (G.levelShards && G.screen === 'aim') ? G.levelShards.size : 0;
+  const gotN = (att ? att.shardsGot.size : 0) + banked;
+  drawStation(stationPos(lv, att ? att.t : t), t,
+              gateN ? { remaining: Math.max(0, gateN - gotN) } : null);
   if (att && !att.dead) {
     drawTrail(att);
     drawShip(att.x, att.y, att.vx, att.vy, att.flying, t);

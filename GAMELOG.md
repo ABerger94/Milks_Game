@@ -95,3 +95,22 @@
 - All still synthesized WebAudio, zero assets. `node --check` clean.
 - Not headless-testable: actual mix balance on phone speakers — for Alek's
   live play-test.
+
+## v0.5 — 2026-09-16 — best-trajectory ghost
+- Your best winning shot per level is now recorded (launch vector + star count)
+  in localStorage and drawn as a faint gold "GHOST" path on the aim screen,
+  under your own live preview — a built-in hint for levels you beat ugly.
+- Only winning shots are recorded, and a lower-star win never overwrites a
+  better ghost. Old saves migrate cleanly (ghosts start null); corrupt entries
+  are sanitized on load.
+- Uses the existing preview integrator, so the ghost matches real flight —
+  purely additive, no physics or level-geometry changes; the v0.1 solver's
+  3-star verification still holds, so the solver was not re-run.
+- Verified headlessly with a DOM-shim harness (19/19: ghost init/record/
+  persist/replace-protection, preview path non-empty, ring lifecycle, all sfx
+  no-throw without an AudioContext, rumble throttle near/far, render() clean
+  on title/aim/aiming/flying/paused, old-save migration, corrupt-entry
+  sanitize), plus a draw-path sweep hitting wormhole swirl, accretion disk,
+  comet glow, and rings.
+- Not headless-testable: whether the ghost label/opacity reads well on a real
+  phone screen — for Alek's live play-test.

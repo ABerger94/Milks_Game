@@ -169,13 +169,16 @@ function simulateLaunch(level, angle, speed, maxT) {
 /*__DOM__*/
 /* ================= SAVE ================= */
 const SAVE_KEY = 'milkrun_save_v1';
-let save = { stars: new Array(24).fill(0), muted: false };
+let save = { stars: new Array(24).fill(0), ghosts: new Array(24).fill(null), muted: false };
 function loadSave() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
       const s = JSON.parse(raw);
       if (Array.isArray(s.stars) && s.stars.length === 24) save.stars = s.stars.map(n => Math.max(0, Math.min(3, n | 0)));
+      // ghost: best winning launch vector per level {vx,vy,stars} | null
+      if (Array.isArray(s.ghosts) && s.ghosts.length === 24)
+        save.ghosts = s.ghosts.map(g => (g && isFinite(g.vx) && isFinite(g.vy)) ? { vx: +g.vx, vy: +g.vy, stars: g.stars | 0 } : null);
       save.muted = !!s.muted;
     }
   } catch (e) { /* storage unavailable: play session-only */ }
@@ -320,6 +323,7 @@ const G = {
   aiming: false,
   aimStart: { x: 0, y: 0 },   // touch-down point: drag is relative, thumbstick-style
   aimCur: { x: 0, y: 0 },
+  lastLaunch: null,        // launch vector of the current attempt's shot (for ghost recording)
   particles: [],
   rings: [],              // expanding shockwave rings (visual juice)
   shake: 0,
@@ -456,6 +460,13 @@ function onWin() {
   if (att.shardsGot.size >= (lv.shards || []).length) stars++;
   G.winStars = stars;
   if (stars > save.stars[G.levelIndex]) { save.stars[G.levelIndex] = stars; writeSave(); }
+  // Record the winning shot as this level's ghost (only if it's at least as
+  // good as the stored one, so a 1-star win never overwrites a 3-star ghost).
+  const gh = save.ghosts[G.levelIndex];
+  if (G.lastLaunch && (!gh || stars >= gh.stars)) {
+    save.ghosts[G.levelIndex] = { vx: G.lastLaunch.vx, vy: G.lastLaunch.vy, stars };
+    writeSave();
+  }
   G.screen = 'win';
   sDelivery();
   const stp = stationPos(lv, att.t);
@@ -599,6 +610,7 @@ function doLaunch() {
   if (v.sp < MINV) { G.aiming = false; return; }
   const a = G.att;
   a.vx = v.vx; a.vy = v.vy; a.flying = true;
+  G.lastLaunch = { vx: v.vx, vy: v.vy };
   G.launchesLeft--; G.launchesUsed++;
   G.aiming = false;
   G.screen = 'flying';
@@ -965,6 +977,25 @@ function drawTrail(att) {
   ctx.restore();
 }
 
+function drawGhost() {
+  // Best-trajectory ghost: faint gold replay of your best winning shot,
+  // drawn under your own aim preview. Pure hint layer — no physics changes.
+  const g = save.ghosts[G.levelIndex];
+  if (!g) return;
+  const lv = LEVELS[G.levelIndex], a = G.att;
+  const pv = previewPath(lv, a.x, a.y, g.vx, g.vy, a.t);
+  ctx.save();
+  for (let i = 0; i < pv.pts.length; i += 6) {
+    const f = i / pv.pts.length;
+    ctx.fillStyle = 'rgba(255,226,127,' + (0.10 + f * 0.16) + ')';
+    ctx.beginPath(); ctx.arc(pv.pts[i], pv.pts[i + 1], 2.5, 0, 6.283); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,226,127,0.5)';
+  ctx.font = '11px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('GHOST — your best shot', a.x + 22, a.y - 34);
+  ctx.restore();
+}
+
 function drawAim() {
   const a = G.att, lv = LEVELS[G.levelIndex];
   const v = aimVelocity();
@@ -1092,7 +1123,7 @@ function render() {
   } else {
     const lv = LEVELS[G.levelIndex];
     renderWorld(lv, G.att, G.time);
-    if (G.screen === 'aim' && G.aiming) drawAim();
+    if (G.screen === 'aim') { drawGhost(); if (G.aiming) drawAim(); }
   }
   ctx.restore();
 

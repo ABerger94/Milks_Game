@@ -81,3 +81,17 @@
   still holds, so the solver was not re-run. `node --check` clean.
 - Not headless-testable: subjective feel of the new effects (timing, density,
   whether the magnet streaks read clearly) — for Alek's live play-test.
+
+## v0.4 — 2026-09-16 — richer sound
+- Launch: layered whoosh — engine roar down, sub-bass thump, whistle climbing
+  up, air rush (was just roar + noise).
+- Delivery: 4-note arpeggio extended to 6 notes with a high shimmer after it.
+- Shards: pentatonic ladder — each pickup in a run plays the next note up the
+  scale, so collecting a shard run sings.
+- Wormhole: added a sparkle sweep descending under the existing rise.
+- New black-hole proximity rumble: a low growl pulses while the ship flies
+  within 280 units of a black hole (throttled to one pulse per 0.4 s, silent
+  when muted or paused).
+- All still synthesized WebAudio, zero assets. `node --check` clean.
+- Not headless-testable: actual mix balance on phone speakers — for Alek's
+  live play-test.

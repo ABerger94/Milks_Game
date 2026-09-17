@@ -248,13 +248,46 @@ const AudioSys = {
   }
 };
 const sClick    = () => AudioSys.tone(660, 0.06, 'square', 0.08);
-const sLaunch   = () => { AudioSys.tone(220, 0.4, 'sawtooth', 0.16, 60); AudioSys.noise(0.3, 0.12, 900); };
-const sPickup   = () => { AudioSys.tone(880, 0.1, 'sine', 0.16, 1320); AudioSys.tone(1320, 0.12, 'sine', 0.12, 1760, 0.07); };
-const sDelivery = () => { [523, 659, 784, 1046].forEach((f, i) => AudioSys.tone(f, 0.22, 'sine', 0.18, null, i * 0.09)); };
+const sLaunch   = () => {
+  AudioSys.tone(220, 0.4, 'sawtooth', 0.16, 60);       // engine roar down
+  AudioSys.tone(70, 0.5, 'sine', 0.18, 34);            // sub-bass thump
+  AudioSys.tone(280, 0.35, 'sine', 0.07, 1500);        // whistle climbing up
+  AudioSys.noise(0.3, 0.12, 900);                      // air rush
+};
+// Pentatonic ladder: each shard pickup climbs one note — collecting a run sings.
+const SHARD_SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5];
+const sPickup   = (n) => {
+  const f = SHARD_SCALE[Math.min(Math.max(0, n | 0), SHARD_SCALE.length - 1)];
+  AudioSys.tone(f, 0.18, 'triangle', 0.18);
+  AudioSys.tone(f * 2, 0.14, 'sine', 0.08, null, 0.03);
+};
+const sDelivery = () => {
+  [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) => AudioSys.tone(f, 0.25, 'sine', 0.18, null, i * 0.08));
+  AudioSys.tone(2093, 0.5, 'sine', 0.05, null, 0.5);   // high shimmer after the arpeggio
+};
 const sExplode  = () => { AudioSys.noise(0.6, 0.4, 700); AudioSys.tone(90, 0.5, 'sine', 0.3, 30); };
-const sWormhole = () => AudioSys.tone(300, 0.35, 'sine', 0.16, 1200);
+const sWormhole = () => {
+  AudioSys.tone(300, 0.35, 'sine', 0.16, 1200);
+  AudioSys.tone(1800, 0.3, 'sine', 0.06, 350, 0.05);   // sparkle sweep down
+};
 const sDepot    = () => { [392, 523, 659].forEach((f, i) => AudioSys.tone(f, 0.14, 'triangle', 0.16, null, i * 0.07)); };
 const sDenied   = () => AudioSys.tone(160, 0.15, 'square', 0.1, 110);
+// Black-hole proximity rumble: low growl while flying near one, throttled.
+function maybeRumble(dt) {
+  if (G.screen !== 'flying' || !G.att || G.att.dead) { G.rumbleT = 0; return; }
+  const a = G.att;
+  let near = false;
+  for (const b of (LEVELS[G.levelIndex].blackholes || [])) {
+    const dx = a.x - b.x, dy = a.y - b.y;
+    if (dx * dx + dy * dy < 280 * 280) { near = true; break; }
+  }
+  if (!near) { G.rumbleT = 0; return; }
+  G.rumbleT -= dt;
+  if (G.rumbleT <= 0) {
+    AudioSys.tone(48, 0.3, 'sawtooth', 0.1, 32);
+    G.rumbleT = 0.4;
+  }
+}
 
 /* ================= CANVAS / VIEW ================= */
 const canvas = document.getElementById('game');
@@ -290,6 +323,7 @@ const G = {
   particles: [],
   rings: [],              // expanding shockwave rings (visual juice)
   shake: 0,
+  rumbleT: 0,             // black-hole proximity rumble throttle
   time: 0,
   idleT: 0,              // title-screen animation clock
   stars: [],             // starfield layers
@@ -664,7 +698,7 @@ function handleAttemptEvents() {
   if (a.shardHit >= 0) {
     const s = LEVELS[G.levelIndex].shards[a.shardHit];
     a.shardHit = -1;
-    sPickup();
+    sPickup(a.shardsGot.size - 1);
     if (s) burst(s.x, s.y, 14, ['#aef4ff', '#ffffff']);
   }
   return null;
@@ -691,6 +725,7 @@ function frame(now) {
     }
     if (n === 10) acc = 0;
     if (G.screen === 'aim' && G.launchesLeft <= 0 && !G.att.flying && !G.att.dead) onFail('nolaunch');
+    maybeRumble(dt);
   }
   updateParticles(dt);
   updateFx(dt);

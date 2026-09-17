@@ -904,7 +904,7 @@ function drawRock(x, y, r, seed, rot) {
   ctx.fillStyle = g; ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.restore();
-
+}
 // trampoline rock: teal glow ring + chevrons so it reads as bouncy, not deadly
 function drawBounceHalo(a, t) {
   ctx.save();
@@ -921,7 +921,6 @@ function drawBounceHalo(a, t) {
     ctx.stroke();
   }
   ctx.restore();
-}
 }
 
 function drawWormhole(w, idx) {

@@ -168,3 +168,18 @@
 - Solver verification: 35/36 levels have single-launch 3-star paths
   (verified headlessly, all shards + win). L16 Rogue's End 3-stars via
   2 launches (shard-bank run + win run, 2 <= par 3) — verified multi-launch.
+
+## 2026-09-16 — v0.7.1 hotfix: bounce-level render crash
+
+- **Bug:** every level with a bounce asteroid (25 Trampoline, 26, 30)
+  rendered only the rock, then threw `ReferenceError: drawBounceHalo is not
+  defined` every frame — no comet/shards/station/ship/HUD. Alek caught it
+  on L25 from a phone screenshot.
+- **Cause:** a missing closing brace left `drawBounceHalo` nested inside
+  `drawRock`, so it was invisible at the renderWorld call site.
+  Syntactically valid (node --check passed); the headless render sweep
+  never exercised a bounce level, so it shipped.
+- **Fix:** closed `drawRock` properly; `drawBounceHalo` is top-level again.
+- **Regression test:** headless harness now renders all 36 levels on both
+  aim and flying screens — all clean. This sweep should run on every
+  future push that touches game.js or levels.js.

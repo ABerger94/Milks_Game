@@ -719,6 +719,9 @@ function retryAttempt() {
   // used depots stay used (no refarming).
   for (const i of G.levelShards) G.att.shardsGot.add(i);
   for (const i of G.levelDepots) G.att.depotsUsed.add(i);
+  // Banked shards may already satisfy the gate — recalculate.
+  const _gate = (LEVELS[G.levelIndex].station && LEVELS[G.levelIndex].station.gate) || 0;
+  if (_gate > 0 && G.att.shardsGot.size >= _gate) G.att.gateOpen = true;
   G.aiming = false;
   G.particles = [];
   G.rings = [];
@@ -1196,8 +1199,7 @@ function renderWorld(lv, att, t) {
   (lv.depots || []).forEach((d, i) => drawDepot(d, att ? att.depotsUsed.has(i) : false));
   (lv.shards || []).forEach((s, i) => { if (!(att && att.shardsGot.has(i))) drawShard(s, t); });
   const gateN = (lv.station && lv.station.gate) || 0;
-  const banked = (G.levelShards && G.screen === 'aim') ? G.levelShards.size : 0;
-  const gotN = (att ? att.shardsGot.size : 0) + banked;
+  const gotN = att ? att.shardsGot.size : 0;
   drawStation(stationPos(lv, att ? att.t : t), t,
               gateN ? { remaining: Math.max(0, gateN - gotN) } : null);
   if (att && !att.dead) {

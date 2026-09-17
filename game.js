@@ -1051,17 +1051,34 @@ function drawHUD() {
   const got = G.att ? G.att.shardsGot.size : 0, total = (lv.shards || []).length;
   ctx.fillStyle = '#aef4ff'; ctx.font = '600 17px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'left';
   ctx.fillText('◆ ' + got + '/' + total, 20, 70);
-  // level name
+  // level name — on narrow phone screens the HTML buttons eat the top-right,
+  // so center the title in the space left of them instead of the full width.
+  const btnW = 175;
+  let tcx = CW / 2, tmaxW = CW - 32;
+  if (CW < 700 && CW - btnW > 120) { tcx = (CW - btnW) / 2; tmaxW = CW - btnW - 24; }
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(234,246,255,0.95)'; ctx.font = '700 18px -apple-system, "Segoe UI", sans-serif';
-  ctx.fillText((G.levelIndex + 1) + ' · ' + lv.name.toUpperCase(), CW / 2, 14);
+  ctx.fillText(fitText((G.levelIndex + 1) + ' · ' + lv.name.toUpperCase(), tmaxW), tcx, 14);
   ctx.fillStyle = 'rgba(160,180,220,0.7)'; ctx.font = '12px -apple-system, "Segoe UI", sans-serif';
-  ctx.fillText(SECTORS[lv.sector].name.toUpperCase() + ' SECTOR · PAR ' + lv.par, CW / 2, 38);
+  ctx.fillText(fitText(SECTORS[lv.sector].name.toUpperCase() + ' SECTOR · PAR ' + lv.par, tmaxW), tcx, 38);
   if (lv.tip && G.launchesUsed === 0 && G.screen === 'aim') {
+    // tip sits below the bottles/shard row so long tips never overlap them
     ctx.fillStyle = 'rgba(255,226,127,0.9)'; ctx.font = '13px -apple-system, "Segoe UI", sans-serif';
-    ctx.fillText(lv.tip, CW / 2, 58);
+    ctx.fillText(fitText(lv.tip, CW - 40), CW / 2, 92);
   }
   ctx.restore();
+}
+
+// Truncate a string with an ellipsis so it fits maxW px in the current font.
+function fitText(s, maxW) {
+  if (ctx.measureText(s).width <= maxW) return s;
+  let lo = 0, hi = s.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (ctx.measureText(s.slice(0, mid) + '…').width <= maxW) lo = mid + 1;
+    else hi = mid;
+  }
+  return s.slice(0, Math.max(0, lo - 1)) + '…';
 }
 
 function drawParticles() {

@@ -114,3 +114,15 @@
   comet glow, and rings.
 - Not headless-testable: whether the ghost label/opacity reads well on a real
   phone screen — for Alek's live play-test.
+
+## v0.5.1 — 2026-09-16 — HUD overlap fix (narrow phones)
+- Playtest catch from Alek's screenshot: on narrow portrait phones the level
+  title ran underneath the top-right HTML buttons, and the level tip text
+  (drawn at y=58) collided with the launch bottles / shard counter.
+- drawHUD is now width-aware: below 700px the title + sector/par line center
+  in the space left of the buttons instead of the full canvas width, with
+  ellipsis truncation (fitText helper) as a backstop; the tip moved to y=92,
+  below the bottles/shard row, and truncates to fit the screen. Desktop and
+  landscape layouts are unchanged.
+- Verified with a headless layout simulation at 390/844/1280px widths — no
+  title/button overlap at any width. No physics or level changes.

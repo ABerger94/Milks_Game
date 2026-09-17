@@ -39,6 +39,7 @@ html, body {
 .panel h2 { letter-spacing: 3px; font-size: 22px; margin-bottom: 16px; }
 .fail-h { color: #ff9f9f; }
 .sub { color: #a9bde0; margin: 10px 0 18px; font-size: 15px; }
+.intro-tip { font-style: italic; color: #9fb3dd; margin: 2px 0 18px; font-size: 15px; line-height: 1.45; }
 
 .kicker { font-size: 11px; letter-spacing: 4px; color: #8fa4d8; margin-bottom: 10px; }
 .game-title {

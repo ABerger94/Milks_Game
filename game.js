@@ -276,7 +276,7 @@ function toWorld(px, py) { return [(px - view.ox) / view.scale, (py - view.oy) /
 
 /* ================= GAME STATE ================= */
 const G = {
-  screen: 'title',       // title | select | aim | flying | paused | win | fail
+  screen: 'title',       // title | select | intro | aim | flying | paused | win | fail
   pauseFrom: 'aim',
   levelIndex: 0,
   att: null,             // attempt state (pure core)
@@ -324,7 +324,7 @@ function initStars() {
 /* ================= UI / SCREENS ================= */
 const $ = id => document.getElementById(id);
 function showOnly(id) {
-  ['overlay-title', 'overlay-levels', 'overlay-pause', 'overlay-win', 'overlay-fail'].forEach(o => {
+  ['overlay-title', 'overlay-levels', 'overlay-intro', 'overlay-pause', 'overlay-win', 'overlay-fail'].forEach(o => {
     $(o).classList.toggle('hidden', o !== id);
   });
   $('hud').classList.toggle('hidden', !(id === null && (G.screen === 'aim' || G.screen === 'flying' || G.screen === 'paused')));
@@ -357,14 +357,14 @@ function buildLevelGrid() {
     b.innerHTML = '<span class="lvl-n">' + (i + 1) + '</span>' +
       '<span class="lvl-s">' + '★'.repeat(st) + '<span class="dim">' + '★'.repeat(3 - st) + '</span></span>';
     b.title = lv.name;
-    if (levelUnlocked(i)) b.addEventListener('click', () => { sClick(); startLevel(i); });
+    if (levelUnlocked(i)) b.addEventListener('click', () => { sClick(); startLevel(i, true); });
     else b.addEventListener('click', () => sDenied());
     wrap.appendChild(b);
   });
   $('total-stars').textContent = totalStars() + ' / 72 ★';
 }
 
-function startLevel(i) {
+function startLevel(i, withIntro) {
   G.levelIndex = i;
   const lv = LEVELS[i];
   G.att = newAttempt(lv);
@@ -375,6 +375,28 @@ function startLevel(i) {
   G.particles = [];
   G.shake = 0;
   G.aiming = false;
+  if (withIntro) { showIntroCard(lv, i); return; }
+  G.screen = 'aim';
+  showOnly(null);
+}
+
+// Level intro card: name, sector, budgets, and the level's tip (if any).
+// Shown when entering from level select or the win screen — never on retry,
+// so a failed run doesn't make you tap through it again.
+function showIntroCard(lv, i) {
+  $('intro-kicker').textContent = 'LEVEL ' + (i + 1) + ' · ' + SECTORS[lv.sector].name.toUpperCase();
+  $('intro-name').textContent = lv.name;
+  $('intro-stats').textContent = lv.launches + ' launches · par ' + lv.par + ' · ' + lv.shards.length + ' shards';
+  const tip = $('intro-tip');
+  tip.textContent = lv.tip || '';
+  tip.style.display = lv.tip ? '' : 'none';
+  G.screen = 'intro';
+  showOnly('overlay-intro');
+}
+
+function dismissIntro() {
+  if (G.screen !== 'intro') return;
+  sClick();
   G.screen = 'aim';
   showOnly(null);
 }
@@ -530,6 +552,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'Escape' || k === 'p' || k === 'P') togglePause();
   else if ((k === 'r' || k === 'R') && (G.screen === 'aim' || G.screen === 'flying' || G.screen === 'paused')) restartLevel();
   else if ((k === 'Enter' || k === ' ') && G.screen === 'title') { AudioSys.init(); sClick(); toSelect(); }
+  else if ((k === 'Enter' || k === ' ') && G.screen === 'intro') dismissIntro();
   else if ((k === 'Enter' || k === ' ') && G.screen === 'win' && !$('btn-next').classList.contains('hidden')) $('btn-next').click();
   else if ((k === 'Enter' || k === ' ') && G.screen === 'fail') $('btn-retry').click();
 });
@@ -542,12 +565,13 @@ $('btn-restart').addEventListener('click', () => { if (G.screen === 'aim' || G.s
 $('btn-mute').addEventListener('click', () => { AudioSys.init(); AudioSys.setMuted(!save.muted); });
 $('btn-pause').addEventListener('click', () => togglePause());
 $('btn-play').addEventListener('click', () => { AudioSys.init(); AudioSys.startAmbient(); sClick(); toSelect(); });
+$('btn-fly').addEventListener('click', dismissIntro);
 $('btn-levels-title').addEventListener('click', () => { sClick(); toSelect(); });
 $('btn-back-title').addEventListener('click', () => { sClick(); toTitle(); });
 $('btn-resume').addEventListener('click', () => togglePause());
 $('btn-restart2').addEventListener('click', restartLevel);
 $('btn-quit').addEventListener('click', () => { sClick(); toSelect(); });
-$('btn-next').addEventListener('click', () => { sClick(); startLevel(G.levelIndex + 1); });
+$('btn-next').addEventListener('click', () => { sClick(); startLevel(G.levelIndex + 1, true); });
 $('btn-replay').addEventListener('click', restartLevel);
 $('btn-levels-win').addEventListener('click', () => { sClick(); toSelect(); });
 $('btn-retry').addEventListener('click', () => { sClick(); retryAttempt(); });

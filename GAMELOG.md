@@ -43,3 +43,23 @@
 - Elastic band visual redrawn along the pull direction from the ship;
   max-power ring unchanged (still reads as "pull this far for full power").
 - Title hint updated: "touch anywhere · drag back · release to launch".
+
+## v0.2 — 2026-09-16 — level intro cards
+- New pre-level intro card (builder suggestion #2, onboarding): entering a
+  level from level select or the win screen now shows a card with the level
+  number + sector ("LEVEL 9 · ROGUE"), the level name, launch/par/shard
+  budgets, and the level's tip when one exists (12 of 24 levels have tips;
+  the tip line hides when a level has none). Dismiss with "TAP TO FLY" or
+  Enter/Space; the level renders behind the card.
+- Retry and restart skip the card — a failed run goes straight back to
+  aiming, so the card never becomes a tap-through annoyance.
+- Level 1 tip text fixed: it still said "drag back from the ship", left over
+  from before v0.1.1's drag-anywhere aiming. README Controls section updated
+  to match (thumbstick-style drag, never drag to the screen edge).
+- No physics or level-geometry changes (tip strings only); the v0.1 solver's
+  3-star verification for all 24 levels still holds, so the solver was not
+  re-run. Verified headlessly with a DOM-shim test harness
+  (13/13: card content for all 24 levels, dismiss flow, retry/restart skip,
+  dismissIntro no-op outside intro, HUD hidden during card).
+- Not headless-testable: actual tap feel / card timing on a real phone —
+  Alek is play-testing live, so this will get a human read tonight.

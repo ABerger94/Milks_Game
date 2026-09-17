@@ -17,7 +17,7 @@ const SECTORS = [
 const LEVELS = [
   // ---------------- SECTOR 1 : DRIFT ----------------
   { name: 'First Light', sector: 0, par: 1, launches: 3,
-    tip: 'Drag back from the ship and release to launch.',
+    tip: 'Touch anywhere, drag back, and release to launch.',
     ship: { x: 140, y: 360 },
     planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
     shards: [ { x: 446, y: 360 }, { x: 780, y: 360 } ],

@@ -11,9 +11,10 @@ canvas, all sound is synthesized with WebAudio.
 
 ## Controls
 
-- **Aim:** press/touch and drag anywhere, starting near the ship. A dotted
-  trajectory preview simulates ~3 seconds of flight live, bending around
-  gravity wells.
+- **Aim:** touch anywhere and drag back, then release. The drag is measured
+  from where your finger lands (thumbstick-style), so you never have to drag
+  to the screen edge. A dotted trajectory preview simulates ~3 seconds of
+  flight live, bending around gravity wells.
 - **Launch:** release. Pull further = more speed.
 - **Restart level:** R key or the ↻ button.
 - **Mute:** M key or the ♪ button.

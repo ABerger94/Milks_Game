@@ -277,3 +277,46 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
   (panelTop=45px in a 701px viewport); title screen centering unchanged.
   `node --check` clean on all JS. No physics/geometry touched — solver rerun
   not needed.
+
+## v0.9 — 2026-09-17 — True difficulty curve (full rebalance)
+- **Why (Alek's verdict after clearing everything):** "the new levels were
+  easy as fuck." He asked for all levels redone, ordered easy → hardest.
+  The old set's solution windows confirmed it: e.g. old L45 had a wider
+  window (10.5°) than old L8 (8°) — the curve was flat-to-inverted.
+- **All 48 normal levels redesigned** as one roughly-monotonic difficulty
+  ramp, measured by solver solution-window width (angle tolerance at the
+  reference speed). Curve now runs 11° (L1) → 1–2.5° (L41–48):
+  - Sector 1 Drift (1–8): 11°→8°, gentle tutorial — planets, asteroids,
+    depots, slingshots only. Tips on 1, 2, 3, 4, 6.
+  - Sector 2 Rogue (9–16): 5–6.5° — black holes, orbiting stations (taught
+    on 11), comets, depots. Tips on 9–12.
+  - Sector 3 Void (17–24): 7°→3° — wormholes (taught 17), shard gates
+    (taught 19), tight budgets. Tips on 17, 19, 20.
+  - Sector 4 Abyss (25–36): 4°→1.5° — bounce rocks (taught 25), dense
+    combos of everything so far. No wind/patrols.
+  - Sector 5 Maelstrom (37–48): 4°→1–2° — wind (taught 37), patrol comets
+    (taught 39); finale levels combine headwind + wormhole + black hole +
+    patrol + gate 3. Send-off tip on 48.
+- **Difficulty philosophy:** every mechanic is taught gently before being
+  demanded; new-mechanic intros (17, 25, 37, 39) are deliberate breather
+  dips. "Harder" = tighter corridors, riskier shard lines, denser/moving
+  hazards, speed gates, patrol/wormhole timing — never blind or unfair.
+  The live trajectory preview remains the equalizer for the tightest shots.
+- **12 hard variants re-derived** from the new 25–36. Every hard version is
+  strictly tighter than its normal counterpart (e.g. 25: 4°→2°, 29: 2°→1°,
+  36: 1.5°→1°); all use only Sector-4 mechanics.
+- **Verification:** solver (same integrator as flight) finds a single-launch
+  all-shard win on all 48 normal + all 12 hard — 60/60, no 0° windows, all
+  speeds ≤ 560, no shard inside a kill radius. Headless-Chromium render sweep
+  across all 60 levels (aim + flying states): zero JS errors, wind/patrol/
+  wormhole/bounce drawing confirmed, 390×844 level-select scroll check passes
+  (levels 1–48 + hard toggle all reachable).
+- **Known wobbles (accepted):** the ramp is roughly — not strictly — monotonic.
+  Local ±1° wobbles remain (e.g. 13→14, 43→47); angle window is one proxy and
+  patrol-timing / comet-timing / speed-gate levels (16, 22, 30, 38, 40, 45)
+  carry difficulty the proxy misses. Levels 41 & 45 have thin speed slop at
+  the reference angle but real 2D (angle×speed) solution regions, verified by
+  hand; the trajectory preview makes them findable, not pixel-perfect.
+- No code changes: same zero-dependency, no-build-step, file://-compatible
+  game. Same localStorage keys (`milkrun_hard_v1` untouched). Only
+  `levels.js` and `hard-levels.js` changed.

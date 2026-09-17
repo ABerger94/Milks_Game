@@ -1,12 +1,14 @@
 'use strict';
 /* MILK RUN — Cosmic Delivery : level definitions.
-   World is 1280 x 720 units. Ship starts at `ship`, goal is `station`.
+   World is 1280 x 720 units. Ship starts at ship, goal is station.
    planet: {x,y,r,m} gravity well + solid.  blackhole: {x,y,r,m} gravity + death.
    asteroid: {x,y,r} static solid.  comet: {x,y,r,vx,vy} moving solid (bounces).
-   shard: {x,y} pickup.  depot: {x,y,r} touch for +1 launch (one use).
+   shard: {x,y,r} pickup.  depot: {x,y,r} touch for +1 launch (one use).
    wormhole: {x,y,r,link} paired by index; preserves velocity vector.
    station.orbit: {cx,cy,radius,speed,phase} for moving stations.
-   G = 4000 (see game.js). Masses tuned so bends are readable, not brutal. */
+   G = 4000 (see game.js). Masses tuned so bends are readable, not brutal.
+   v0.9: full difficulty rebalance — all 48 levels redesigned as a true
+   difficulty curve, easiest at 1, hardest at 48. */
 
 const SECTORS = [
   { name: 'Drift', tag: 'Sector 1 · learn the ropes' },
@@ -18,440 +20,826 @@ const SECTORS = [
 
 const LEVELS = [
   // ---------------- SECTOR 1 : DRIFT ----------------
-  { name: 'First Light', sector: 0, par: 1, launches: 3,
-    tip: 'Touch anywhere, drag back, and release to launch.',
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 446, y: 360 }, { x: 780, y: 360 } ],
-    station: { x: 1140, y: 360, r: 50 } },
-
-  { name: 'Gentle Bend', sector: 0, par: 2, launches: 4,
-    tip: 'Planets bend your flight. Aim wide around them.',
-    ship: { x: 140, y: 360 },
-    planets: [ { x: 640, y: 360, r: 70, m: 9000 } ],
-    asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 427, y: 511 }, { x: 830, y: 503 } ],
-    station: { x: 1140, y: 360, r: 50 } },
-
-  { name: 'High Road', sector: 0, par: 2, launches: 4,
-    ship: { x: 140, y: 430 },
-    planets: [ { x: 560, y: 480, r: 80, m: 12000 } ],
-    asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 397, y: 130 }, { x: 815, y: 65 } ],
-    station: { x: 1140, y: 240, r: 48 } },
-
-  { name: 'The Gauntlet', sector: 0, par: 2, launches: 4,
-    tip: 'Asteroids are solid. Thread the gaps.',
+{
+    name: "First Light",
+    sector: 0,
+    par: 3,
+    launches: 5,
+    tip: "Drag to aim, release to launch. Grab every shard, then reach the station.",
+    ship: { x: 160, y: 360 },
+    planets: [],
+    asteroids: [],
+    depots: [],
+    shards: [{ x: 320, y: 360 }, { x: 460, y: 360 }],
+    station: { x: 980, y: 360, r: 85 },
+  },
+  {
+    name: "Around the Bend",
+    sector: 0,
+    par: 3,
+    launches: 5,
+    tip: "Planets bend your flight. Aim below the station and let gravity curl you up into it.",
+    ship: { x: 160, y: 360 },
+    planets: [{ x: 650, y: 150, r: 50, m: 7000 }],
+    asteroids: [],
+    depots: [],
+    shards: [{ x: 340, y: 438 }, { x: 460, y: 467 }],
+    station: { x: 1010, y: 290, r: 85 },
+  },
+  {
+    name: "Needle's Eye",
+    sector: 0,
+    par: 3,
+    launches: 4,
+    tip: "Asteroids are solid. The shards mark the safe line through the gap.",
     ship: { x: 140, y: 360 },
     planets: [],
-    asteroids: [ { x: 480, y: 280, r: 22 }, { x: 680, y: 440, r: 24 },
-                 { x: 880, y: 280, r: 22 }, { x: 1000, y: 450, r: 20 } ],
-    blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 580, y: 360 }, { x: 780, y: 360 }, { x: 980, y: 360 } ],
-    station: { x: 1140, y: 360, r: 48 } },
-
-  { name: 'Twin Suns', sector: 0, par: 2, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [ { x: 480, y: 220, r: 60, m: 8000 }, { x: 800, y: 500, r: 60, m: 8000 } ],
-    asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 640, y: 360 }, { x: 960, y: 200 } ],
-    station: { x: 1140, y: 360, r: 48 } },
-
-  { name: 'Slingshot', sector: 0, par: 2, launches: 4,
-    tip: 'Dive close to a planet to whip around it.',
-    ship: { x: 140, y: 180 },
-    planets: [ { x: 640, y: 360, r: 95, m: 22000 } ],
-    asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 500, y: 67 }, { x: 930, y: 239 } ],
-    station: { x: 1140, y: 540, r: 48 } },
-
-  { name: 'Asteroid Waltz', sector: 0, par: 3, launches: 5,
-    ship: { x: 140, y: 520 },
+    asteroids: [{ x: 520, y: 200, r: 46 }, { x: 520, y: 520, r: 46 }],
+    depots: [],
+    shards: [{ x: 400, y: 360 }, { x: 480, y: 360 }],
+    station: { x: 1050, y: 360, r: 78 },
+  },
+  {
+    name: "Close Shave",
+    sector: 0,
+    par: 2,
+    launches: 4,
+    tip: "Skim a planet's edge for a gravity whip. The closer the pass, the harder the sling.",
+    ship: { x: 160, y: 560 },
+    planets: [{ x: 640, y: 360, r: 110, m: 10000 }],
+    asteroids: [],
+    depots: [],
+    shards: [{ x: 392, y: 690 }, { x: 501, y: 712 }],
+    station: { x: 1100, y: 200, r: 70 },
+  },
+  {
+    name: "Serpentine",
+    sector: 0,
+    par: 2,
+    launches: 4,
+    ship: { x: 400, y: 360 },
+    planets: [{ x: 600, y: 280, r: 50, m: 5000 }, { x: 800, y: 440, r: 50, m: 5000 }],
+    asteroids: [],
+    depots: [],
+    shards: [{ x: 522, y: 382 }, { x: 714, y: 335 }],
+    station: { x: 1000, y: 360, r: 65 },
+  },
+  {
+    name: "Top Up",
+    sector: 0,
+    par: 2,
+    launches: 2,
+    tip: "Fly through the glowing depot for +1 launch. Budgets are tight from here - every shot counts.",
+    ship: { x: 160, y: 360 },
     planets: [],
-    asteroids: [ { x: 400, y: 200, r: 24 }, { x: 600, y: 520, r: 26 },
-                 { x: 800, y: 200, r: 24 }, { x: 1000, y: 520, r: 26 },
-                 { x: 700, y: 445, r: 20 } ],
-    blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 472, y: 399 }, { x: 808, y: 277 } ],
-    station: { x: 1150, y: 200, r: 48 } },
-
-  { name: "Drift's End", sector: 0, par: 3, launches: 5,
-    ship: { x: 140, y: 360 },
-    planets: [ { x: 420, y: 240, r: 65, m: 10000 }, { x: 860, y: 480, r: 65, m: 10000 } ],
-    asteroids: [ { x: 640, y: 360, r: 24 } ],
-    blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 593, y: 334 }, { x: 983, y: 75 }, { x: 1154, y: 109 } ],
-    station: { x: 1140, y: 360, r: 42 } },
+    asteroids: [],
+    depots: [{ x: 600, y: 360, r: 26 }],
+    shards: [{ x: 400, y: 360 }, { x: 550, y: 360 }],
+    station: { x: 1050, y: 360, r: 70 },
+  },
+  {
+    name: "Rock and a Hard Place",
+    sector: 0,
+    par: 2,
+    launches: 4,
+    ship: { x: 160, y: 360 },
+    planets: [{ x: 500, y: 280, r: 55, m: 2000 }],
+    asteroids: [{ x: 700, y: 180, r: 40 }, { x: 900, y: 540, r: 40 }],
+    depots: [],
+    shards: [{ x: 309, y: 429 }, { x: 446, y: 469 }],
+    station: { x: 1050, y: 360, r: 95 },
+  },
+  {
+    name: "Drift Gauntlet",
+    sector: 0,
+    par: 2,
+    launches: 3,
+    ship: { x: 160, y: 360 },
+    planets: [],
+    asteroids: [{ x: 650, y: 200, r: 42 }, { x: 650, y: 520, r: 42 }, { x: 900, y: 200, r: 42 }, { x: 900, y: 520, r: 42 }],
+    depots: [{ x: 775, y: 360, r: 26 }],
+    shards: [{ x: 400, y: 360 }, { x: 550, y: 360 }],
+    station: { x: 1120, y: 360, r: 80 },
+  },
 
   // ---------------- SECTOR 2 : ROGUE ----------------
-  { name: 'Event Horizon', sector: 1, par: 2, launches: 4,
-    tip: 'Black holes pull hard and kill on touch. Respect them.',
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [],
-    blackholes: [ { x: 640, y: 360, r: 30, m: 15000 } ],
-    depots: [], wormholes: [], comets: [],
-    shards: [ { x: 398, y: 524 }, { x: 784, y: 548 } ],
-    station: { x: 1140, y: 360, r: 48 } },
-
-  { name: 'Depot Run', sector: 1, par: 2, launches: 3,
-    tip: 'Green depots grant +1 launch. Grab them mid-flight.',
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [],
-    blackholes: [ { x: 640, y: 480, r: 30, m: 32000 } ],
-    depots: [ { x: 640, y: 200, r: 26 } ],
-    wormholes: [], comets: [],
-    shards: [ { x: 384, y: 114 }, { x: 829, y: 93 } ],
-    station: { x: 1150, y: 360, r: 46 } },
-
-  { name: 'Moving Target', sector: 1, par: 3, launches: 4,
-    tip: 'Stations can orbit. Time your launch.',
-    ship: { x: 140, y: 360 },
-    planets: [ { x: 640, y: 360, r: 70, m: 10000 } ],
-    asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 217, y: 515 }, { x: 436, y: 640 } ],
-    station: { x: 910, y: 360, r: 46,
-               orbit: { cx: 640, cy: 360, radius: 270, speed: 0.4, phase: 0 } } },
-
-  { name: 'Rogue Pair', sector: 1, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [],
-    blackholes: [ { x: 520, y: 260, r: 28, m: 38000 }, { x: 760, y: 460, r: 28, m: 38000 } ],
-    depots: [], wormholes: [], comets: [],
-    shards: [ { x: 640, y: 360 }, { x: 1000, y: 200 } ],
-    station: { x: 1140, y: 360, r: 46 } },
-
-  { name: 'Shard Run', sector: 1, par: 2, launches: 3,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [],
-    blackholes: [ { x: 640, y: 360, r: 30, m: 17000 } ],
-    depots: [], wormholes: [], comets: [],
-    shards: [ { x: 231, y: 278 }, { x: 382, y: 176 }, { x: 598, y: 111 }, { x: 827, y: 140 }, { x: 1010, y: 233 } ],
-    station: { x: 1150, y: 360, r: 42 } },
-
-  { name: 'Fuel Stop', sector: 1, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
+{
+    name: "Wide Berth",
+    sector: 1,
+    par: 2,
+    launches: 4,
+    tip: "Black holes pull harder the closer you get. Give this one a wide berth - skim, don't hug.",
+    ship: {
+      x: 180,
+      y: 360
+    },
     planets: [],
-    asteroids: [ { x: 600, y: 300, r: 22 }, { x: 850, y: 450, r: 24 } ],
-    blackholes: [ { x: 950, y: 200, r: 28, m: 40000 } ],
-    depots: [ { x: 400, y: 520, r: 26 } ],
-    wormholes: [], comets: [],
-    shards: [ { x: 265, y: 281 }, { x: 566, y: 171 } ],
-    station: { x: 1140, y: 420, r: 44 } },
-
-  { name: 'The Maw', sector: 1, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [],
-    blackholes: [ { x: 640, y: 360, r: 32, m: 19000 } ],
-    depots: [], wormholes: [], comets: [],
-    shards: [ { x: 381, y: 549 }, { x: 833, y: 574 } ],
-    station: { x: 1150, y: 360, r: 40 } },
-
-  { name: "Rogue's End", sector: 1, par: 3, launches: 5,
-    ship: { x: 140, y: 360 },
-    planets: [ { x: 800, y: 240, r: 60, m: 9000 } ],
-    asteroids: [ { x: 650, y: 450, r: 22 }, { x: 950, y: 350, r: 22 } ],
-    blackholes: [ { x: 500, y: 500, r: 30, m: 45000 } ],
-    depots: [ { x: 300, y: 200, r: 26 } ],
-    wormholes: [], comets: [],
-    shards: [ { x: 125, y: 458 }, { x: 664, y: 309 }, { x: 963, y: 209 } ],
-    station: { x: 1100, y: 360, r: 44,
-               orbit: { cx: 900, cy: 360, radius: 200, speed: 0.5, phase: 1.5 } } },
+    asteroids: [],
+    blackholes: [
+      {
+        x: 640,
+        y: 540,
+        r: 24,
+        m: 2000
+      }
+    ],
+    depots: [],
+    comets: [],
+    shards: [
+      {
+        x: 425,
+        y: 313
+      },
+      {
+        x: 596,
+        y: 294
+      }
+    ],
+    station: {
+      x: 1100,
+      y: 360,
+      r: 70
+    }
+  },
+  {
+    name: "Running on Fumes",
+    sector: 1,
+    par: 1,
+    launches: 2,
+    tip: "Only two launches in the tank and a long way to fly. Thread the depot mid-flight to bank an extra launch.",
+    ship: {
+      x: 160,
+      y: 560
+    },
+    planets: [
+      {
+        x: 640,
+        y: 240,
+        r: 50,
+        m: 7000
+      }
+    ],
+    asteroids: [],
+    blackholes: [],
+    depots: [
+      {
+        x: 303,
+        y: 557,
+        r: 24
+      }
+    ],
+    comets: [],
+    shards: [
+      {
+        x: 400,
+        y: 551
+      },
+      {
+        x: 660,
+        y: 503
+      }
+    ],
+    station: {
+      x: 1120,
+      y: 140,
+      r: 76
+    }
+  },
+  {
+    name: "Orbital Rendezvous",
+    sector: 1,
+    par: 2,
+    launches: 4,
+    tip: "The station is on the move - and you can WAIT before launching. Time your shot so the station meets your flight line.",
+    ship: {
+      x: 200,
+      y: 560
+    },
+    planets: [],
+    asteroids: [],
+    blackholes: [],
+    depots: [],
+    comets: [],
+    shards: [
+      {
+        x: 387,
+        y: 477
+      },
+      {
+        x: 569,
+        y: 396
+      }
+    ],
+    station: {
+      x: 1050,
+      y: 330,
+      r: 64,
+      orbit: {
+        cx: 1050,
+        cy: 330,
+        radius: 115,
+        speed: 0.35,
+        phase: 3.14159
+      }
+    }
+  },
+  {
+    name: "Comet Crossing",
+    sector: 1,
+    par: 2,
+    launches: 4,
+    tip: "Watch the comet's rhythm - launch when the lane is clear, and never chase it across.",
+    ship: {
+      x: 180,
+      y: 360
+    },
+    planets: [],
+    asteroids: [],
+    blackholes: [],
+    depots: [],
+    comets: [
+      {
+        x: 640,
+        y: 250,
+        r: 20,
+        vx: 0,
+        vy: 35
+      }
+    ],
+    shards: [
+      {
+        x: 423,
+        y: 360
+      },
+      {
+        x: 813,
+        y: 360
+      }
+    ],
+    station: {
+      x: 1100,
+      y: 360,
+      r: 64
+    }
+  },
+  {
+    name: "The Whip",
+    sector: 1,
+    par: 2,
+    launches: 3,
+    ship: {
+      x: 180,
+      y: 360
+    },
+    planets: [],
+    asteroids: [],
+    blackholes: [
+      {
+        x: 640,
+        y: 430,
+        r: 115,
+        m: 8000
+      }
+    ],
+    depots: [],
+    comets: [],
+    shards: [
+      {
+        x: 375,
+        y: 561
+      },
+      {
+        x: 493,
+        y: 618
+      }
+    ],
+    station: {
+      x: 1100,
+      y: 200,
+      r: 60
+    }
+  },
+  {
+    name: "Twin Wells",
+    sector: 1,
+    par: 2,
+    launches: 3,
+    ship: {
+      x: 180,
+      y: 360
+    },
+    planets: [],
+    asteroids: [],
+    blackholes: [
+      {
+        x: 640,
+        y: 20,
+        r: 30,
+        m: 400
+      },
+      {
+        x: 640,
+        y: 700,
+        r: 30,
+        m: 400
+      }
+    ],
+    depots: [],
+    comets: [],
+    shards: [
+      {
+        x: 386,
+        y: 360
+      },
+      {
+        x: 592,
+        y: 360
+      }
+    ],
+    station: {
+      x: 1100,
+      y: 360,
+      r: 64
+    }
+  },
+  {
+    name: "Crossfire Alley",
+    sector: 1,
+    par: 2,
+    launches: 3,
+    ship: {
+      x: 180,
+      y: 360
+    },
+    planets: [],
+    asteroids: [],
+    blackholes: [
+      {
+        x: 800,
+        y: 150,
+        r: 26,
+        m: 200
+      }
+    ],
+    depots: [],
+    comets: [
+      {
+        x: 400,
+        y: 600,
+        r: 10,
+        vx: 0,
+        vy: -20
+      }
+    ],
+    shards: [
+      {
+        x: 450,
+        y: 360
+      }
+    ],
+    station: {
+      x: 1100,
+      y: 360,
+      r: 52
+    }
+  },
+  {
+    name: "Rogue's Gambit",
+    sector: 1,
+    par: 2,
+    launches: 3,
+    ship: {
+      x: 180,
+      y: 600
+    },
+    planets: [],
+    asteroids: [
+      {
+        x: 380,
+        y: 130,
+        r: 30
+      },
+      {
+        x: 450,
+        y: 215,
+        r: 28
+      },
+      {
+        x: 640,
+        y: 95,
+        r: 30
+      },
+      {
+        x: 980,
+        y: 560,
+        r: 30
+      }
+    ],
+    blackholes: [
+      {
+        x: 620,
+        y: 320,
+        r: 32,
+        m: 8000
+      }
+    ],
+    depots: [],
+    comets: [
+      {
+        x: 680,
+        y: 615,
+        r: 18,
+        vx: -60,
+        vy: 80
+      }
+    ],
+    shards: [
+      {
+        x: 349,
+        y: 646
+      },
+      {
+        x: 445,
+        y: 654
+      }
+    ],
+    station: {
+      x: 1060,
+      y: 220,
+      r: 54,
+      orbit: {
+        cx: 1060,
+        cy: 220,
+        radius: 95,
+        speed: 0.4,
+        phase: 1.5708
+      }
+    }
+  },
 
   // ---------------- SECTOR 3 : VOID ----------------
-  { name: 'Fold Space', sector: 2, par: 2, launches: 4,
-    tip: 'Wormholes teleport you, keeping your speed. Fly into one.',
+{
+    name: "Blue Door",
+    sector: 2,
+    par: 2,
+    launches: 3,
+    tip: "Wormholes travel in pairs. Fly into one and you'll pop out of its twin — same speed, same direction. Aim straight through like it isn't there.",
     ship: { x: 140, y: 360 },
-    planets: [],
-    asteroids: [ { x: 680, y: 180, r: 26 }, { x: 680, y: 360, r: 26 },
-                 { x: 680, y: 540, r: 26 }, { x: 770, y: 270, r: 24 },
-                 { x: 770, y: 450, r: 24 } ],
-    blackholes: [], depots: [], comets: [],
-    wormholes: [ { x: 520, y: 360, r: 34, link: 1 }, { x: 900, y: 360, r: 34, link: 0 } ],
-    shards: [ { x: 327, y: 360 }, { x: 931, y: 360 } ],
-    station: { x: 1150, y: 360, r: 46 } },
-
-  { name: 'Comet Storm', sector: 2, par: 3, launches: 4,
-    tip: 'Comets move and kill on touch. Watch their paths.',
+    wormholes: [
+      { x: 640, y: 360, r: 34, link: 1 },
+      { x: 1020, y: 360, r: 34, link: 0 }
+    ],
+    shards: [{ x: 390, y: 360 }, { x: 1100, y: 360 }],
+    station: { x: 1170, y: 360, r: 44 }
+  },
+  {
+    name: "Exit Interview",
+    sector: 2,
+    par: 2,
+    launches: 3,
+    ship: { x: 120, y: 130 },
+    wormholes: [
+      { x: 560, y: 330, r: 28, link: 1 },
+      { x: 960, y: 430, r: 28, link: 0 }
+    ],
+    asteroids: [
+      { x: 1100, y: 540, r: 22 },
+      { x: 340, y: 170, r: 20 }
+    ],
+    shards: [{ x: 340, y: 230 }, { x: 1043, y: 468 }],
+    station: { x: 1142, y: 513, r: 40 }
+  },
+  {
+    name: "Two Keys",
+    sector: 2,
+    par: 2,
+    launches: 3,
+    tip: "See the diamond pips on the station? It's LOCKED until you bank 2 shards. Take the wormhole detour — there's a shard on each side.",
+    ship: { x: 100, y: 620 },
+    wormholes: [
+      { x: 560, y: 380, r: 28, link: 1 },
+      { x: 940, y: 420, r: 28, link: 0 }
+    ],
+    shards: [{ x: 330, y: 500 }, { x: 1039, y: 368 }],
+    station: { x: 1144, y: 314, r: 42, gate: 2 }
+  },
+  {
+    name: "One Shot",
+    sector: 2,
+    par: 1,
+    launches: 2,
+    tip: "Par 1. One perfect launch: both shards, then the station. You get 2 launches — use the first to learn the line if you must.",
+    ship: { x: 120, y: 620 },
+    wormholes: [
+      { x: 560, y: 400, r: 28, link: 1 },
+      { x: 950, y: 300, r: 28, link: 0 }
+    ],
+    asteroids: [
+      { x: 1078, y: 197, r: 16 },
+      { x: 1082, y: 273, r: 16 }
+    ],
+    shards: [{ x: 340, y: 510 }, { x: 1050, y: 250 }],
+    station: { x: 1147, y: 202, r: 40, gate: 2 }
+  },
+  {
+    name: "Relay Race",
+    sector: 2,
+    par: 2,
+    launches: 3,
+    ship: { x: 100, y: 620 },
+    wormholes: [
+      { x: 751, y: 330, r: 28, link: 1 },
+      { x: 877, y: 274, r: 28, link: 0 },
+      { x: 1014, y: 213, r: 30, link: 3 },
+      { x: 1087, y: 181, r: 28, link: 2 }
+    ],
+    asteroids: [
+      { x: 606, y: 526, r: 24 }
+    ],
+    shards: [{ x: 425, y: 475 }, { x: 945, y: 244 }, { x: 1151, y: 152 }],
+    station: { x: 1215, y: 124, r: 44 }
+  },
+  {
+    name: "Skim the Drain",
+    sector: 2,
+    par: 2,
+    launches: 3,
     ship: { x: 140, y: 360 },
-    planets: [ { x: 640, y: 360, r: 75, m: 11000 } ],
-    asteroids: [], blackholes: [], depots: [], wormholes: [],
-    comets: [ { x: 300, y: 100, r: 20, vx: 120, vy: 90 },
-              { x: 980, y: 620, r: 20, vx: -110, vy: -80 } ],
-    shards: [ { x: 398, y: 209 }, { x: 832, y: 179 } ],
-    station: { x: 1140, y: 360, r: 46 } },
-
-  { name: 'Double Fold', sector: 2, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [],
-    asteroids: [ { x: 640, y: 360, r: 30 } ],
-    blackholes: [], depots: [], comets: [],
-    wormholes: [ { x: 400, y: 200, r: 32, link: 1 }, { x: 900, y: 520, r: 32, link: 0 },
-                 { x: 900, y: 200, r: 32, link: 3 }, { x: 400, y: 520, r: 32, link: 2 } ],
-    shards: [ { x: 629, y: 446 }, { x: 649, y: 244 } ],
-    station: { x: 1150, y: 360, r: 46 } },
-
-  { name: 'Tight Budget', sector: 2, par: 1, launches: 2,
-    tip: 'Only 2 launches. Make them count.',
-    ship: { x: 140, y: 360 },
-    planets: [ { x: 600, y: 300, r: 70, m: 12000 } ],
-    asteroids: [],
-    blackholes: [ { x: 750, y: 500, r: 28, m: 14000 } ],
-    depots: [ { x: 300, y: 550, r: 26 } ],
-    wormholes: [], comets: [],
-    shards: [ { x: 348, y: 399 }, { x: 836, y: 332 } ],
-    station: { x: 1150, y: 360, r: 44 } },
-
-  { name: 'Crossfire', sector: 2, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [],
-    wormholes: [ { x: 500, y: 500, r: 32, link: 1 }, { x: 1000, y: 220, r: 32, link: 0 } ],
-    comets: [ { x: 200, y: 200, r: 20, vx: 140, vy: 60 },
-              { x: 1080, y: 520, r: 20, vx: -130, vy: -70 } ],
-    shards: [ { x: 341, y: 414 }, { x: 546, y: 469 } ],
-    station: { x: 880, y: 360, r: 44,
-               orbit: { cx: 640, cy: 360, radius: 240, speed: 0.45, phase: 0 } } },
-
-  { name: 'The Long Way', sector: 2, par: 3, launches: 4,
-    ship: { x: 140, y: 560 },
-    planets: [ { x: 950, y: 450, r: 80, m: 14000 } ],
-    asteroids: [], blackholes: [], depots: [], comets: [],
-    wormholes: [ { x: 640, y: 360, r: 36, link: 1 }, { x: 150, y: 150, r: 36, link: 0 } ],
-    shards: [ { x: 346, y: 380 }, { x: 647, y: 213 } ],
-    station: { x: 1150, y: 200, r: 44 } },
-
-  { name: 'Void Dance', sector: 2, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], depots: [], wormholes: [],
-    blackholes: [ { x: 450, y: 250, r: 28, m: 42000 }, { x: 830, y: 470, r: 28, m: 42000 } ],
-    comets: [ { x: 640, y: 100, r: 20, vx: 0, vy: 140 },
-              { x: 640, y: 620, r: 20, vx: 0, vy: -140 } ],
-    shards: [ { x: 640, y: 360 }, { x: 1100, y: 360 } ],
-    station: { x: 870, y: 360, r: 42,
-               orbit: { cx: 640, cy: 360, radius: 230, speed: 0.5, phase: 2 } } },
-
-  { name: 'Last Delivery', sector: 2, par: 3, launches: 5,
-    tip: 'Everything you learned. One last run.',
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [],
-    blackholes: [ { x: 640, y: 200, r: 30, m: 45000 } ],
-    depots: [ { x: 640, y: 520, r: 26 } ],
-    wormholes: [ { x: 350, y: 360, r: 32, link: 1 }, { x: 950, y: 360, r: 32, link: 0 } ],
-    comets: [ { x: 500, y: 600, r: 20, vx: 120, vy: -60 },
-              { x: 800, y: 120, r: 20, vx: -100, vy: 80 } ],
-    shards: [ { x: 190, y: 371 }, { x: 244, y: 378 }, { x: 304, y: 381 }, { x: 992, y: 357 }, { x: 1046, y: 349 }, { x: 1095, y: 337 } ],
-    station: { x: 1150, y: 360, r: 42 } },
+    blackholes: [{ x: 620, y: 380, r: 38, m: 15000 }],
+    wormholes: [
+      { x: 960, y: 480, r: 32, link: 1 },
+      { x: 1080, y: 620, r: 30, link: 0 }
+    ],
+    shards: [{ x: 490, y: 620 }, { x: 1124, y: 572 }],
+    station: { x: 1210, y: 480, r: 40 }
+  },
+  {
+    name: "Crossfire Toll",
+    sector: 2,
+    par: 2,
+    launches: 3,
+    ship: { x: 120, y: 360 },
+    asteroids: [
+      { x: 612, y: 221, r: 20 },
+      { x: 612, y: 327, r: 20 }
+    ],
+    comets: [{ x: 700, y: 642, r: 16, vx: 0, vy: -130 }],
+    shards: [{ x: 416, y: 308 }, { x: 711, y: 257 }, { x: 957, y: 214 }],
+    station: { x: 1150, y: 180, r: 38, gate: 3 }
+  },
+  {
+    name: "The Long Way Home",
+    sector: 2,
+    par: 1,
+    launches: 2,
+    ship: { x: 100, y: 640 },
+    wormholes: [
+      { x: 570, y: 469, r: 28, link: 1 },
+      { x: 852, y: 366, r: 28, link: 0 },
+      { x: 1040, y: 298, r: 28, link: 3 },
+      { x: 1068, y: 288, r: 28, link: 2 }
+    ],
+    asteroids: [
+      { x: 450, y: 466, r: 20 },
+      { x: 450, y: 559, r: 20 }
+    ],
+    shards: [{ x: 335, y: 554 }, { x: 946, y: 332 }, { x: 1143, y: 260 }],
+    station: { x: 1209, y: 236, r: 38, gate: 3 }
+  },
 
   // ---------------- SECTOR 4 : ABYSS ----------------
-  // NOTE: bounce rocks are backboards — a rightward ship reverses off them.
-  // Sector 4 bounce levels are designed as there-and-back shots.
-  { name: 'Trampoline', sector: 3, par: 2, launches: 3,
-    tip: 'Teal rocks bounce you back. Grab the ◆, then ride the rebound home.',
-    ship: { x: 140, y: 360 },
-    planets: [], blackholes: [], depots: [], wormholes: [],
-    comets: [ { x: 700, y: 100, r: 18, vx: 0, vy: 150 } ],
-    asteroids: [ { x: 1000, y: 360, r: 70, bounce: true } ],
-    shards: [ { x: 800, y: 360 } ],
-    station: { x: 500, y: 360, r: 50, gate: 1 } },
+// ---- 25 · Pogo (bounce tutorial) ----
+  { name: 'Pogo', sector: 3, par: 1, launches: 3,
+    tip: 'That haloed rock is bouncy! Aim for its lower-left cheek — you bank down-right toward the station. The ◆s mark the way.',
+    ship: { x: 200, y: 500 },
+    planets: [], blackholes: [], depots: [], wormholes: [], comets: [], winds: [], patrols: [],
+    asteroids: [ { x: 450, y: 380, r: 80, bounce: true } ],
+    shards: [ { x: 297, y: 477 }, { x: 407, y: 517 } ],
+    station: { x: 420, y: 581, r: 44 } },
 
-  { name: 'Boomerang', sector: 3, par: 2, launches: 3,
-    ship: { x: 600, y: 360 },
-    planets: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    asteroids: [ { x: 1000, y: 360, r: 70, bounce: true } ],
-    shards: [ { x: 800, y: 360 }, { x: 400, y: 360 } ],
-    station: { x: 140, y: 360, r: 46 } },
+  // ---- 26 · Rebound Line ----
+  { name: 'Rebound Line', sector: 3, par: 1, launches: 3,
+    tip: 'Same bank, smaller rock, tighter station. One ◆ on the way in, one on the rebound.',
+    ship: { x: 200, y: 500 },
+    planets: [], blackholes: [], depots: [], wormholes: [], comets: [], winds: [], patrols: [],
+    asteroids: [ { x: 450, y: 380, r: 65, bounce: true } ],
+    shards: [ { x: 308, y: 474 }, { x: 449, y: 505 } ],
+    station: { x: 482, y: 560, r: 44 } },
 
-  { name: 'Locked Door', sector: 3, par: 2, launches: 3,
-    tip: 'The station is locked — grab every ◆ before delivery.',
-    ship: { x: 140, y: 360 },
-    planets: [ { x: 640, y: 120, r: 55, m: 2500 } ],
-    asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    shards: [ { x: 450, y: 360 }, { x: 850, y: 360 } ],
-    station: { x: 1150, y: 360, r: 48, gate: 2 } },
+  // ---- 27 · Bank Shot (gate 2 + bounce) ----
+  { name: 'Bank Shot', sector: 3, par: 2, launches: 3,
+    tip: 'The station is locked until you bank both ◆◆. One sits on the way in, one on the rebound.',
+    ship: { x: 180, y: 540 },
+    planets: [], blackholes: [], depots: [], wormholes: [], comets: [], winds: [], patrols: [],
+    asteroids: [ { x: 460, y: 340, r: 70, bounce: true } ],
+    shards: [ { x: 284, y: 459 }, { x: 315, y: 396 } ],
+    station: { x: 242, y: 414, r: 42, gate: 2 } },
 
-  { name: 'Toll Booth', sector: 3, par: 3, launches: 4,
+  // ---- 28 · Backstop (black hole toll + bounce backboard) ----
+  { name: 'Backstop', sector: 3, par: 2, launches: 3,
+    tip: 'No straight shot here — bank off the big rock\u2019s lower cheek and drop straight down into the station. The ◆◆ mark the bank.',
     ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], depots: [], wormholes: [], comets: [],
-    blackholes: [ { x: 640, y: 360, r: 26, m: 40000 } ],
-    shards: [ { x: 399, y: 570 }, { x: 797, y: 599 }, { x: 1084, y: 400 } ],
-    station: { x: 1150, y: 360, r: 46, gate: 3 } },
+    planets: [], blackholes: [],
+    depots: [], wormholes: [], comets: [], winds: [], patrols: [],
+    asteroids: [ { x: 500, y: 220, r: 75, bounce: true } ],
+    shards: [ { x: 291, y: 322 }, { x: 442, y: 370 } ],
+    station: { x: 442, y: 455, r: 50 } },
 
-  { name: 'Thread the Needle', sector: 3, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    asteroids: [ { x: 500, y: 150, r: 30 }, { x: 500, y: 450, r: 30 },
-                 { x: 800, y: 100, r: 30 }, { x: 800, y: 410, r: 30 },
-                 { x: 1000, y: 80, r: 30 }, { x: 1000, y: 370, r: 30 } ],
-    shards: [ { x: 500, y: 303 }, { x: 800, y: 256 } ],
-    station: { x: 1150, y: 200, r: 44 } },
+  // ---- 29 · Slalom (columns + bounce redirect) ----
+  { name: 'Slalom', sector: 3, par: 2, launches: 3,
+    tip: 'Thread the towers, kiss the rock\u2019s lower-left cheek, and let it tip you down through the second gate.',
+    ship: { x: 220, y: 260 },
+    planets: [], blackholes: [], depots: [], wormholes: [], comets: [], winds: [], patrols: [],
+    asteroids: [ { x: 380, y: 140, r: 38 }, { x: 380, y: 380, r: 38 },
+                 { x: 620, y: 260, r: 80, bounce: true },
+                 { x: 480, y: 420, r: 38 }, { x: 760, y: 420, r: 38 } ],
+    shards: [ { x: 370, y: 289 }, { x: 578, y: 401 } ],
+    station: { x: 601, y: 477, r: 52 } },
 
-  { name: 'Event Horizon', sector: 3, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], depots: [], wormholes: [], comets: [],
-    blackholes: [ { x: 640, y: 360, r: 28, m: 50000 } ],
-    asteroids: [ { x: 1050, y: 150, r: 55, bounce: true } ],
-    shards: [ { x: 368, y: 597 }, { x: 749, y: 661 } ],
-    station: { x: 1150, y: 360, r: 46 } },
+  // ---- 30 · Crossfire Rebound ----
+  { name: 'Crossfire Rebound', sector: 3, par: 2, launches: 3,
+    tip: 'Comets strafe the lane — wait for your moment, then bank off the rock\u2019s upper shoulder and ride the rebound up.',
+    ship: { x: 500, y: 360 },
+    planets: [], blackholes: [], depots: [], wormholes: [], winds: [], patrols: [],
+    comets: [ { x: 650, y: 100, r: 18, vx: 0, vy: 150 },
+              { x: 835, y: 620, r: 18, vx: 0, vy: -160 },
+              { x: 700, y: 240, r: 18, vx: 120, vy: 0 } ],
+    asteroids: [ { x: 900, y: 360, r: 70, bounce: true } ],
+    shards: [ { x: 667, y: 335 }, { x: 835, y: 241 } ],
+    station: { x: 836, y: 171, r: 48 } },
 
-  { name: 'The Vault', sector: 3, par: 3, launches: 4,
-    tip: 'The direct route is sealed. Take the wormhole.',
+  // ---- 31 · The Folded Vault (wormhole + bounce vault, gate 2) ----
+  { name: 'The Folded Vault', sector: 3, par: 2, launches: 3,
+    tip: 'Fold through, then bounce: the vault\u2019s rock banks you down to the locked station. Both ◆◆ first.',
     ship: { x: 140, y: 360 },
-    planets: [], blackholes: [], depots: [], comets: [],
-    asteroids: [ { x: 700, y: 360, r: 40 } ],
-    wormholes: [ { x: 500, y: 360, r: 34, link: 1 }, { x: 900, y: 360, r: 34, link: 0 } ],
-    shards: [ { x: 300, y: 360 }, { x: 1050, y: 360 } ],
-    station: { x: 1150, y: 360, r: 46, gate: 2 } },
+    planets: [], blackholes: [], depots: [], winds: [], patrols: [], comets: [],
+    wormholes: [ { x: 420, y: 360, r: 32, link: 1 }, { x: 1000, y: 150, r: 32, link: 0 } ],
+    asteroids: [ { x: 1160, y: 110, r: 60, bounce: true } ],
+    shards: [ { x: 280, y: 360 }, { x: 1050, y: 150 } ],
+    station: { x: 1029, y: 421, r: 36, gate: 2 } },
 
-  { name: 'Orbit Decay', sector: 3, par: 3, launches: 4,
+  // ---- 32 · Orbital Ricochet ----
+  { name: 'Orbital Ricochet', sector: 3, par: 2, launches: 3,
+    tip: 'The station won\u2019t sit still — and your shot can\u2019t reach its orbit directly. Bank off the rock and time your launch to meet it on the rebound.',
+    ship: { x: 200, y: 400 },
+    planets: [], blackholes: [], depots: [], wormholes: [], comets: [], winds: [], patrols: [],
+    asteroids: [ { x: 450, y: 400, r: 75, bounce: true } ],
+    shards: [ { x: 307, y: 308 }, { x: 274, y: 270 } ],
+    station: { x: 0, y: 0, r: 36, orbit: { cx: 234, cy: 225, radius: 40, speed: 0.35, phase: 0 } } },
+
+  // ---- 33 · Needle Storm (dense comets, no bounce) ----
+  { name: 'Needle Storm', sector: 3, par: 1, launches: 2,
+    tip: 'No tricks, no bounces — just six comets and a long walk. Wait for your gap; the ◆◆ sit just off the safe line.',
     ship: { x: 140, y: 360 },
-    planets: [ { x: 350, y: 550, r: 60, m: 8000 } ],
-    blackholes: [], depots: [], wormholes: [],
+    planets: [], blackholes: [], depots: [], wormholes: [], winds: [], patrols: [],
     asteroids: [],
-    comets: [ { x: 700, y: 620, r: 18, vx: 60, vy: -100 } ],
-    shards: [ { x: 446, y: 338 }, { x: 730, y: 390 } ],
-    station: { x: 900, y: 360, r: 44,
-               orbit: { cx: 900, cy: 360, radius: 180, speed: 0.45, phase: 0 } } },
+    comets: [ { x: 350, y: 80, r: 18, vx: 0, vy: 110 },
+              { x: 500, y: 640, r: 18, vx: 0, vy: -120 },
+              { x: 650, y: 80, r: 18, vx: 0, vy: 105 },
+              { x: 800, y: 640, r: 18, vx: 0, vy: -115 },
+              { x: 950, y: 80, r: 18, vx: 0, vy: 120 },
+              { x: 1080, y: 640, r: 18, vx: 0, vy: -110 } ],
+    shards: [ { x: 400, y: 360 }, { x: 720, y: 360 }, { x: 1040, y: 360 } ],
+    station: { x: 1140, y: 360, r: 48, gate: 3 } },
 
-  { name: 'Comet Crossfire', sector: 3, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [],
-    comets: [ { x: 640, y: 120, r: 20, vx: 0, vy: 160 },
-              { x: 640, y: 600, r: 20, vx: 0, vy: -160 } ],
-    shards: [ { x: 450, y: 360 }, { x: 850, y: 360 } ],
-    station: { x: 1150, y: 360, r: 46 } },
+  // ---- 34 · The Maw's Teeth (black hole gauntlet) ----
+  { name: 'The Maw\u2019s Teeth', sector: 3, par: 2, launches: 3,
+    tip: 'The maws watch from the dark — thread the bounce clean and don\u2019t let them pull you off the rebound. All three ◆◆◆.',
+    ship: { x: 200, y: 500 },
+    planets: [], blackholes: [ { x: 800, y: 150, r: 26, m: 4000 },
+                               { x: 1000, y: 600, r: 26, m: 4000 },
+                               { x: 1150, y: 250, r: 26, m: 4000 } ],
+    depots: [], wormholes: [], comets: [], winds: [], patrols: [],
+    asteroids: [ { x: 450, y: 380, r: 70, bounce: true } ],
+    shards: [ { x: 312, y: 473 }, { x: 478, y: 512 }, { x: 501, y: 539 } ],
+    station: { x: 533, y: 577, r: 52, gate: 3 } },
 
-  { name: 'Gauntlet II', sector: 3, par: 2, launches: 3,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], depots: [], wormholes: [], comets: [],
-    blackholes: [ { x: 450, y: 280, r: 24, m: 38000 }, { x: 700, y: 440, r: 24, m: 38000 },
-                  { x: 950, y: 280, r: 24, m: 38000 } ],
-    shards: [ { x: 393, y: 437 }, { x: 822, y: 384 } ],
-    station: { x: 1150, y: 360, r: 44 } },
+  // ---- 35 · Chain Reaction (wormhole chain, gate 3) ----
+  { name: 'Chain Reaction', sector: 3, par: 2, launches: 3,
+    tip: 'Two folds, three ◆◆, one locked vault. Two comets strafe the long fold — fold in straight and time it.',
+    ship: { x: 140, y: 600 },
+    planets: [], blackholes: [],
+    depots: [], winds: [], patrols: [],
+    wormholes: [ { x: 489, y: 579, r: 26, link: 1 }, { x: 300, y: 150, r: 26, link: 0 },
+                 { x: 1150, y: 100, r: 26, link: 3 }, { x: 1140, y: 600, r: 28, link: 2 } ],
+    comets: [ { x: 725, y: 80, r: 16, vx: 0, vy: 150 },
+              { x: 950, y: 640, r: 16, vx: 0, vy: -160 } ],
+    asteroids: [],
+    shards: [ { x: 315, y: 590 }, { x: 725, y: 125 }, { x: 1175, y: 598 } ],
+    station: { x: 1210, y: 596, r: 36, gate: 3 } },
 
-  { name: 'Wormhole Chain', sector: 3, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], comets: [],
-    wormholes: [ { x: 350, y: 200, r: 34, link: 1 }, { x: 700, y: 520, r: 34, link: 0 },
-                 { x: 820, y: 200, r: 34, link: 3 }, { x: 1080, y: 520, r: 34, link: 2 } ],
-    shards: [ { x: 287, y: 237 }, { x: 944, y: 316 } ],
-    station: { x: 1150, y: 150, r: 44, gate: 2 } },
-
-  { name: 'Abyssal Heart', sector: 3, par: 3, launches: 4,
-    tip: 'Everything you learned. One last delivery.',
-    ship: { x: 140, y: 360 },
-    planets: [],
-    blackholes: [ { x: 500, y: 250, r: 26, m: 42000 }, { x: 800, y: 470, r: 26, m: 42000 } ],
-    asteroids: [], depots: [], wormholes: [],
-    comets: [ { x: 950, y: 100, r: 18, vx: -80, vy: 120 } ],
-    shards: [ { x: 365, y: 444 }, { x: 533, y: 414 }, { x: 702, y: 384 } ],
-    station: { x: 1050, y: 360, r: 42, gate: 3,
-               orbit: { cx: 1050, cy: 360, radius: 120, speed: 0.5, phase: 1 } } },
+  // ---- 36 · Heart of the Abyss (finale) ----
+  { name: 'Heart of the Abyss', sector: 3, par: 2, launches: 3,
+    tip: 'Everything at once: fold, bank the rock\u2019s lower limb, thread the comets. All three ◆◆◆ for the vault.',
+    ship: { x: 140, y: 600 },
+    planets: [], blackholes: [ { x: 200, y: 150, r: 26, m: 5000 } ],
+    depots: [], winds: [], patrols: [],
+    wormholes: [ { x: 340, y: 580, r: 28, link: 1 }, { x: 700, y: 250, r: 28, link: 0 } ],
+    comets: [ { x: 850, y: 80, r: 16, vx: 0, vy: 140 },
+              { x: 850, y: 620, r: 16, vx: 0, vy: -150 } ],
+    asteroids: [ { x: 1050, y: 200, r: 60, bounce: true } ],
+    shards: [ { x: 240, y: 590 }, { x: 841, y: 236 }, { x: 906, y: 272 } ],
+    station: { x: 848, y: 310, r: 38, gate: 3 } },
 
   // ---------------- SECTOR 5 : MAELSTROM ----------------
-  // winds: {x,y,w,h,ax,ay} — cyan zones of constant acceleration while inside.
-  // patrols: {x1,y1,x2,y2,r,period,phase} — killer comets ping-ponging between
-  // endpoints; position is a pure function of time (see patrolPos in game.js).
-  { name: 'First Breeze', sector: 4, par: 2, launches: 4,
-    tip: 'Cyan zones are wind — they push you along. Amber comets patrol back and forth. Ride the storm.',
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 280, y: 280, w: 700, h: 160, ax: 220, ay: 0 } ],
-    patrols: [],
-    shards: [ { x: 450, y: 360 }, { x: 800, y: 360 } ],
-    station: { x: 1140, y: 360, r: 50 } },
+{ name: "Fair Wind", sector: 4, par: 2, launches: 3,
+    tip: "Wind zones push your ship while it's inside. This one's a tailwind — it blows toward the station. Aim through the gap and let it carry you.",
+    ship: {x:130,y:360},
+    asteroids: [{x:640,y:292,r:40},{x:640,y:428,r:40},{x:300,y:150,r:26},{x:980,y:570,r:26}],
+    winds: [{x:320,y:240,w:580,h:240,ax:110,ay:0}],
+    shards: [{x:430,y:360},{x:860,y:360}],
+    station: {x:1150,y:360,r:42} },
 
-  { name: 'Updraft', sector: 4, par: 2, launches: 4,
-    ship: { x: 140, y: 560 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 200, y: 140, w: 360, h: 500, ax: 40, ay: -200 } ],
-    patrols: [],
-    shards: [ { x: 380, y: 480 }, { x: 760, y: 320 } ],
-    station: { x: 1150, y: 120, r: 48 } },
+  { name: "Against the Gale", sector: 4, par: 2, launches: 3,
+    ship: {x:130,y:360},
+    asteroids: [{x:640,y:296,r:36},{x:640,y:424,r:36}],
+    winds: [{x:420,y:0,w:560,h:720,ax:-190,ay:0}],
+    shards: [{x:300,y:360},{x:700,y:365}],
+    station: {x:1150,y:380,r:40} },
 
-  { name: 'Cross Traffic', sector: 4, par: 2, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [],
-    patrols: [ { x1: 640, y1: 140, x2: 640, y2: 580, r: 16, period: 9, phase: 0 } ],
-    shards: [ { x: 430, y: 360 }, { x: 880, y: 360 } ],
-    station: { x: 1140, y: 360, r: 48 } },
+  { name: "Crossing Guard", sector: 4, par: 2, launches: 3,
+    tip: "Patrol comets sweep a fixed route on a timer, and they are lethal. You can WAIT before launching — watch the sweep, then fire through the gap when it clears.",
+    ship: {x:130,y:360},
+    asteroids: [{x:640,y:300,r:34},{x:640,y:420,r:34}],
+    patrols: [{x1:640,y1:190,x2:640,y2:530,r:24,period:10,phase:0}],
+    shards: [{x:430,y:360},{x:860,y:360}],
+    station: {x:1150,y:360,r:36} },
 
-  { name: 'Storm Surge', sector: 4, par: 2, launches: 3,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 250, y: 200, w: 800, h: 320, ax: 260, ay: 0 } ],
-    patrols: [],
-    shards: [ { x: 420, y: 360 }, { x: 700, y: 360 }, { x: 950, y: 320 } ],
-    station: { x: 1150, y: 360, r: 48 } },
+  { name: "Gale Watch", sector: 4, par: 1, launches: 3,
+    ship: {x:130,y:360},
+    winds: [{x:400,y:120,w:480,h:480,ax:-100,ay:150}],
+    patrols: [{x1:900,y1:180,x2:900,y2:540,r:24,period:8,phase:0.3}],
+    shards: [{x:560,y:300},{x:760,y:290}],
+    station: {x:1150,y:360,r:40} },
 
-  { name: 'Against the Wind', sector: 4, par: 2, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 300, y: 220, w: 560, h: 280, ax: -200, ay: 0 } ],
-    patrols: [],
-    shards: [ { x: 450, y: 360 }, { x: 800, y: 360 } ],
-    station: { x: 1150, y: 360, r: 46 } },
+  { name: "Riding the Thermal", sector: 4, par: 1, launches: 3,
+    ship: {x:140,y:600},
+    winds: [{x:300,y:80,w:300,h:570,ax:0,ay:-200}],
+    asteroids: [{x:500,y:36,r:34},{x:900,y:36,r:34},{x:1020,y:144,r:28},{x:1020,y:284,r:28}],
+    shards: [{x:745,y:433},{x:866,y:344},{x:987,y:255}],
+    station: {x:1150,y:150,r:38} },
 
-  { name: 'Sentry Line', sector: 4, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [],
-    patrols: [ { x1: 500, y1: 120, x2: 500, y2: 600, r: 15, period: 10, phase: 0 },
-               { x1: 840, y1: 600, x2: 840, y2: 120, r: 15, period: 10, phase: 0.5 } ],
-    shards: [ { x: 320, y: 360 }, { x: 670, y: 360 }, { x: 1000, y: 360 } ],
-    station: { x: 1150, y: 360, r: 46 } },
+  { name: "Drift Correction", sector: 4, par: 1, launches: 3,
+    ship: {x:130,y:360},
+    winds: [{x:350,y:100,w:600,h:520,ax:-70,ay:190}],
+    comets: [{x:900,y:150,r:20,vx:-90,vy:60}],
+    asteroids: [{x:800,y:219,r:28},{x:800,y:324,r:28}],
+    shards: [{x:500,y:300},{x:700,y:270},{x:900,y:300}],
+    station: {x:1150,y:360,r:36} },
 
-  { name: 'Trade Winds', sector: 4, par: 2, launches: 4,
-    ship: { x: 140, y: 420 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 300, y: 150, w: 640, h: 200, ax: 200, ay: -120 } ],
-    patrols: [ { x1: 400, y1: 560, x2: 1000, y2: 560, r: 15, period: 12, phase: 0.25 } ],
-    shards: [ { x: 500, y: 340 }, { x: 800, y: 260 } ],
-    station: { x: 1140, y: 180, r: 46 } },
+  { name: "The Opening", sector: 4, par: 1, launches: 2,
+    ship: {x:130,y:360},
+    asteroids: [{x:630,y:300,r:38},{x:630,y:420,r:38}],
+    patrols: [{x1:480,y1:170,x2:480,y2:550,r:24,period:9,phase:0},
+              {x1:780,y1:170,x2:780,y2:550,r:24,period:9,phase:0.5}],
+    shards: [{x:330,y:360},{x:960,y:360}],
+    station: {x:1150,y:360,r:38} },
 
-  { name: 'Downburst', sector: 4, par: 3, launches: 4,
-    ship: { x: 140, y: 200 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 250, y: 100, w: 800, h: 500, ax: 180, ay: 260 } ],
-    patrols: [],
-    shards: [ { x: 500, y: 250 }, { x: 800, y: 380 } ],
-    station: { x: 1100, y: 540, r: 48 } },
+  { name: "Storm Surge", sector: 4, par: 1, launches: 2,
+    ship: {x:130,y:400},
+    winds: [{x:300,y:0,w:700,h:720,ax:-140,ay:-60}],
+    asteroids: [{x:750,y:264,r:28},{x:750,y:374,r:28}],
+    patrols: [{x1:550,y1:120,x2:550,y2:520,r:24,period:8,phase:0},
+              {x1:850,y1:120,x2:850,y2:520,r:24,period:8,phase:0.5}],
+    shards: [{x:550,y:355},{x:850,y:295}],
+    station: {x:1150,y:200,r:36,gate:2} },
 
-  { name: 'Locked in the Storm', sector: 4, par: 3, launches: 4,
-    ship: { x: 140, y: 360 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 250, y: 260, w: 750, h: 200, ax: 200, ay: 0 } ],
-    patrols: [ { x1: 450, y1: 200, x2: 450, y2: 520, r: 14, period: 7, phase: 0.3 },
-               { x1: 800, y1: 520, x2: 800, y2: 200, r: 14, period: 7, phase: 0.8 } ],
-    shards: [ { x: 450, y: 360 }, { x: 800, y: 360 } ],
-    station: { x: 1150, y: 360, r: 46, gate: 2 } },
+  { name: "Eye of the Storm", sector: 4, par: 1, launches: 2,
+    ship: {x:140,y:360},
+    blackholes: [{x:640,y:360,r:35,m:12000}],
+    winds: [{x:300,y:0,w:680,h:720,ax:-120,ay:0},
+            {x:300,y:80,w:680,h:200,ax:0,ay:-200}],
+    asteroids: [{x:1000,y:70,r:28},{x:1000,y:175,r:28}],
+    patrols: [{x1:700,y1:0,x2:700,y2:180,r:22,period:7,phase:0}],
+    shards: [{x:535,y:82},{x:954,y:86}],
+    station: {x:1140,y:360,r:36} },
 
-  { name: 'Eye Wall', sector: 4, par: 3, launches: 4,
-    ship: { x: 600, y: 360 },
-    planets: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    asteroids: [ { x: 1000, y: 360, r: 70, bounce: true } ],
-    winds: [ { x: 650, y: 260, w: 300, h: 200, ax: 180, ay: 0 },
-             { x: 250, y: 260, w: 300, h: 200, ax: -150, ay: 0 } ],
-    patrols: [ { x1: 700, y1: 150, x2: 700, y2: 570, r: 14, period: 11, phase: 0 } ],
-    shards: [ { x: 800, y: 360 }, { x: 400, y: 360 } ],
-    station: { x: 140, y: 360, r: 46 } },
+  { name: "Shear Line", sector: 4, par: 1, launches: 2,
+    ship: {x:130,y:360},
+    winds: [{x:700,y:200,w:450,h:320,ax:-150,ay:50}],
+    asteroids: [{x:600,y:200,r:40},{x:600,y:300,r:40},{x:600,y:400,r:40},{x:600,y:500,r:40},
+                {x:1050,y:310,r:28},{x:1050,y:410,r:28}],
+    wormholes: [{x:400,y:360,r:30,link:1},{x:700,y:360,r:30,link:0}],
+    patrols: [{x1:950,y1:280,x2:950,y2:440,r:22,period:6,phase:0}],
+    shards: [{x:250,y:360},{x:900,y:365}],
+    station: {x:1150,y:360,r:36} },
 
-  { name: 'Tempest Gate', sector: 4, par: 3, launches: 5,
-    ship: { x: 140, y: 200 },
-    planets: [], asteroids: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    winds: [ { x: 250, y: 120, w: 760, h: 160, ax: 220, ay: 0 } ],
-    patrols: [ { x1: 400, y1: 480, x2: 400, y2: 680, r: 15, period: 9, phase: 0 },
-               { x1: 900, y1: 240, x2: 900, y2: 40, r: 15, period: 9, phase: 0.5 } ],
-    shards: [ { x: 500, y: 200 }, { x: 820, y: 200 } ],
-    station: { x: 1150, y: 200, r: 44, gate: 2 } },
+  { name: "Maelstrom", sector: 4, par: 1, launches: 2,
+    ship: {x:130,y:360},
+    winds: [{x:300,y:0,w:700,h:720,ax:-150,ay:0}],
+    wormholes: [{x:450,y:360,r:32,link:1},{x:850,y:360,r:32,link:0}],
+    patrols: [{x1:650,y1:200,x2:650,y2:520,r:22,period:6,phase:0},
+              {x1:1000,y1:200,x2:1000,y2:520,r:22,period:6,phase:0.5}],
+    shards: [{x:250,y:360},{x:950,y:360},{x:1080,y:360}],
+    station: {x:1150,y:360,r:36,gate:3} },
 
-  { name: "Maelstrom's Eye", sector: 4, par: 3, launches: 5,
-    tip: 'Everything you learned. One last ride through the storm.',
-    ship: { x: 140, y: 360 },
-    planets: [], blackholes: [], depots: [], wormholes: [], comets: [],
-    asteroids: [ { x: 1120, y: 360, r: 55, bounce: true } ],
-    winds: [ { x: 250, y: 280, w: 780, h: 160, ax: 240, ay: 0 } ],
-    patrols: [ { x1: 550, y1: 140, x2: 550, y2: 580, r: 15, period: 11, phase: 0.35 },
-               { x1: 880, y1: 580, x2: 880, y2: 140, r: 15, period: 11, phase: 0.85 } ],
-    shards: [ { x: 450, y: 360 }, { x: 750, y: 360 } ],
-    station: { x: 140, y: 360, r: 46, gate: 2 } },
+  { name: "The Last Delivery", sector: 4, par: 1, launches: 2,
+    tip: "Last stop on the Milk Run. Every trick in the book at once — wind shear, patrols, the void itself. Two launches. Make the final delivery count.",
+    ship: {x:130,y:360},
+    winds: [{x:300,y:0,w:700,h:720,ax:-140,ay:0}],
+    blackholes: [{x:1000,y:280,r:28,m:12000}],
+    wormholes: [{x:450,y:360,r:32,link:1},{x:850,y:360,r:32,link:0}],
+    patrols: [{x1:1000,y1:200,x2:1000,y2:520,r:22,period:6,phase:0}],
+    shards: [{x:250,y:360},{x:950,y:360},{x:1080,y:360}],
+    station: {x:1150,y:360,r:36,gate:3} }
 ];

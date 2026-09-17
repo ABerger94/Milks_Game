@@ -126,3 +126,10 @@
   landscape layouts are unchanged.
 - Verified with a headless layout simulation at 390/844/1280px widths — no
   title/button overlap at any width. No physics or level changes.
+
+## v0.5.2 — 2026-09-16 — HUD title zone fix, round 2
+- Follow-up to v0.5.1: the shifted title now overlapped the milk bottles on
+  the left (Alek's screenshot feedback).
+- The title + sector/par lines now center in the actual gap between the milk
+  bottles' right edge and the top-right buttons on narrow (<700px) screens,
+  with ellipsis truncation as a backstop. Wide screens unchanged.

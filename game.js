@@ -1051,11 +1051,16 @@ function drawHUD() {
   const got = G.att ? G.att.shardsGot.size : 0, total = (lv.shards || []).length;
   ctx.fillStyle = '#aef4ff'; ctx.font = '600 17px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'left';
   ctx.fillText('◆ ' + got + '/' + total, 20, 70);
-  // level name — on narrow phone screens the HTML buttons eat the top-right,
-  // so center the title in the space left of them instead of the full width.
+  // level name — on narrow phone screens, center the title in the gap between
+  // the milk bottles (left) and the HTML buttons (top-right) so it overlaps
+  // neither. Wide screens keep the classic full-width centering.
   const btnW = 175;
+  const bottlesRight = 24 + (cap - 1) * 24 + 12;
   let tcx = CW / 2, tmaxW = CW - 32;
-  if (CW < 700 && CW - btnW > 120) { tcx = (CW - btnW) / 2; tmaxW = CW - btnW - 24; }
+  if (CW < 700) {
+    const zoneL = bottlesRight + 12, zoneR = CW - btnW;
+    if (zoneR - zoneL > 60) { tcx = (zoneL + zoneR) / 2; tmaxW = zoneR - zoneL - 12; }
+  }
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(234,246,255,0.95)'; ctx.font = '700 18px -apple-system, "Segoe UI", sans-serif';
   ctx.fillText(fitText((G.levelIndex + 1) + ' · ' + lv.name.toUpperCase(), tmaxW), tcx, 14);

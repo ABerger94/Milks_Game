@@ -320,3 +320,31 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
 - No code changes: same zero-dependency, no-build-step, file://-compatible
   game. Same localStorage keys (`milkrun_hard_v1` untouched). Only
   `levels.js` and `hard-levels.js` changed.
+
+## v0.10 — 2026-09-17 — Sector 5 gets ears: wind whoosh + patrol warning
+- The v0.4 sound pass predated Sector 5, so wind zones (12 levels) and
+  patrol comets had no audio identity at all. Two new ambient cues, both
+  mirroring the v0.4 black-hole proximity rumble pattern:
+  - **Wind whoosh** (`maybeWindWhoosh`): while the ship flies inside a wind
+    rect, a soft filtered-noise whoosh pulses every 0.45 s; volume scales
+    with wind strength (0.05 + strength/200 × 0.09, shipped zones are
+    50–200 px/s²). Silent outside zones.
+  - **Patrol warning** (`maybePatrolWarn`): a ticking blip that accelerates
+    as the nearest patrol comet closes in — silent beyond 220 units from
+    the kill edge, ticking every 0.5 s at range down to 0.12 s at contact,
+    pitch fixed, volume rising slightly. Gives timing levels an audio
+    telegraph for movers the 3-second preview can't fully cover.
+- Both are throttled, flying-only, silent when muted/paused/dead, and
+  no-throw without an AudioContext (AudioSys guards) — zero physics or
+  level-geometry changes, so the v0.9 solver's 60/60 verification still
+  holds and the solver was not re-run. `node --check` clean.
+- Verified headlessly with a DOM-shim harness (23/23): whoosh fires once
+  in-zone with strength-scaled volume, throttles, re-fires after the
+  window, stays silent outside zones / muted / paused / aiming / dead /
+  on windless levels; warning stays silent beyond 220, fires a short
+  square blip near a patrol, ticks faster closer in, throttles, and stays
+  silent paused/muted; all three ambient fns no-throw with no AudioContext;
+  20 raw frame() ticks + a full render() on real level 37 (wind) in
+  flying state — zero exceptions.
+- Not headless-testable: actual mix balance of whoosh/warning against the
+  rumble and the ambient pad on phone speakers — for Alek's live play-test.

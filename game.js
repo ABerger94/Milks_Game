@@ -388,6 +388,49 @@ function maybeRumble(dt) {
   }
 }
 
+// Wind-zone whoosh: a soft air rush while the ship flies through a wind
+// zone, volume scaled with wind strength (shipped levels use 50–200 px/s²).
+// Throttled pulses; silent when muted/paused, no-throw without AudioContext.
+function maybeWindWhoosh(dt) {
+  if (G.screen !== 'flying' || !G.att || G.att.dead) { G.windT = 0; return; }
+  const a = G.att, lv = activeLevel();
+  let str = 0;
+  for (const w of (lv.winds || [])) {
+    if (a.x >= w.x && a.x <= w.x + w.w && a.y >= w.y && a.y <= w.y + w.h)
+      str = Math.max(str, Math.sqrt(w.ax * w.ax + w.ay * w.ay));
+  }
+  if (!str) { G.windT = 0; return; }
+  G.windT -= dt;
+  if (G.windT <= 0) {
+    AudioSys.noise(0.4, 0.05 + Math.min(str, 200) / 200 * 0.09, 900);
+    G.windT = 0.45;
+  }
+}
+
+// Patrol-comet proximity warning: a ticking blip whose rate accelerates as
+// the nearest patrol comet closes in (silent beyond 220 units, fastest at
+// kill range). Throttled; silent when muted/paused.
+function maybePatrolWarn(dt) {
+  if (G.screen !== 'flying' || !G.att || G.att.dead) { G.patrolT = 0; return; }
+  const a = G.att, lv = activeLevel();
+  const patrols = lv.patrols || [];
+  if (!patrols.length) { G.patrolT = 0; return; }
+  let nearest = Infinity;
+  for (const p of patrols) {
+    const pp = patrolPos(p, a.t);
+    const dx = a.x - pp.x, dy = a.y - pp.y;
+    const d = Math.sqrt(dx * dx + dy * dy) - (p.r + SHIP_R);
+    if (d < nearest) nearest = d;
+  }
+  if (nearest > 220) { G.patrolT = 0; return; }
+  G.patrolT -= dt;
+  if (G.patrolT <= 0) {
+    const k = 1 - Math.max(0, nearest) / 220;  // 0 at range edge → 1 at contact
+    AudioSys.tone(1180, 0.05, 'square', 0.04 + k * 0.05);
+    G.patrolT = 0.5 - k * 0.38;                // 0.5 s far → 0.12 s close
+  }
+}
+
 /* ================= CANVAS / VIEW ================= */
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -424,6 +467,8 @@ const G = {
   rings: [],              // expanding shockwave rings (visual juice)
   shake: 0,
   rumbleT: 0,             // black-hole proximity rumble throttle
+  windT: 0,               // wind-zone whoosh throttle
+  patrolT: 0,            // patrol-comet proximity warning throttle
   time: 0,
   idleT: 0,              // title-screen animation clock
   stars: [],             // starfield layers
@@ -903,6 +948,8 @@ function frame(now) {
     if (n === 10) acc = 0;
     if (G.screen === 'aim' && G.launchesLeft <= 0 && !G.att.flying && !G.att.dead) onFail('nolaunch');
     maybeRumble(dt);
+    maybeWindWhoosh(dt);
+    maybePatrolWarn(dt);
   }
   updateParticles(dt);
   updateFx(dt);

@@ -23,10 +23,15 @@ html, body {
 /* ---------- Overlays ---------- */
 .overlay {
   position: fixed; inset: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; justify-content: center;
   background: rgba(5, 8, 25, 0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
   padding: 20px; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
+/* margin:auto (not align-items:center) keeps the panel centered when short
+   but fully scrollable when taller than the viewport — centering a taller
+   flex child clips its top above the scroll origin. */
+.overlay .panel { margin: auto; }
 .panel {
   text-align: center; background: rgba(12, 18, 48, 0.88);
   border: 1px solid rgba(140, 180, 255, 0.3); border-radius: 20px;

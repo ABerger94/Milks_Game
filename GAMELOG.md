@@ -254,3 +254,26 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
   clean; the corruption appeared in the final tree). 8 levels failed render.
   Repaired the brace, re-ran the full sweep: ALL PASS. This is why the merged
   sweep exists — real render execution caught what `node --check` cannot.
+
+## v0.8.1 — 2026-09-16 — level-select scroll fix
+- **Bug (reported by Alek, on phone):** in the level selector, level 9 was the
+  highest reachable — levels 1–8 were cut off above the scrollable area and
+  could never be scrolled to.
+- **Root cause:** `.overlay` used `display:flex; align-items:center` together
+  with `overflow-y:auto`. When the panel (48 levels + 5 sector headers + hard
+  toggle) grew taller than the viewport, flex centering pushed its top above
+  the scroll origin — unreachable, and invisible to `scrollHeight` (it only
+  counts overflow below the origin). Reproduced in headless Chromium at
+  390×844: at scrollTop=0 the level-1 button sat at y=-337px.
+- **Fix (`style.css`):** dropped `align-items:center` from `.overlay`; the
+  panel now centers via `margin:auto`, which centers short content identically
+  but keeps tall content's top at the scroll origin (fully reachable). Also
+  added `-webkit-overflow-scrolling:touch` for iOS momentum scrolling.
+- **Fix (`game.js`):** `toSelect()` now resets `overlay-levels.scrollTop = 0`
+  so the selector always opens at the top after a grid rebuild.
+- **Verified in real headless-Chrome layout (390×844):** level 1 visible at
+  y=+167px at scrollTop=0; level 48 + hard-toggle button fully visible at max
+  scroll; 12-level hard grid still perfectly vertically centered
+  (panelTop=45px in a 701px viewport); title screen centering unchanged.
+  `node --check` clean on all JS. No physics/geometry touched — solver rerun
+  not needed.

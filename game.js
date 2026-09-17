@@ -475,6 +475,9 @@ function toSelect() {
   G.screen = 'select';
   buildLevelGrid();
   showOnly('overlay-levels');
+  // Always open at the top — a stale scroll position could strand the
+  // first rows out of reach after the grid rebuilds at a new height.
+  $('overlay-levels').scrollTop = 0;
 }
 function buildLevelGrid() {
   const wrap = $('level-grid'); wrap.innerHTML = '';

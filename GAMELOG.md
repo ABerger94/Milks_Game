@@ -169,17 +169,88 @@
   (verified headlessly, all shards + win). L16 Rogue's End 3-stars via
   2 launches (shard-bank run + win run, 2 <= par 3) — verified multi-launch.
 
-## 2026-09-16 — v0.7.1 hotfix: bounce-level render crash
+## v0.8 — 2026-09-16 — Sector 5: Maelstrom + Hard Mode
 
-- **Bug:** every level with a bounce asteroid (25 Trampoline, 26, 30)
-  rendered only the rock, then threw `ReferenceError: drawBounceHalo is not
-  defined` every frame — no comet/shards/station/ship/HUD. Alek caught it
-  on L25 from a phone screenshot.
-- **Cause:** a missing closing brace left `drawBounceHalo` nested inside
-  `drawRock`, so it was invisible at the renderWorld call site.
-  Syntactically valid (node --check passed); the headless render sweep
-  never exercised a bounce level, so it shipped.
-- **Fix:** closed `drawRock` properly; `drawBounceHalo` is top-level again.
-- **Regression test:** headless harness now renders all 36 levels on both
-  aim and flying screens — all clean. This sweep should run on every
-  future push that touches game.js or levels.js.
+Alek beat all 36 levels and asked for both: a new sector AND hard-mode
+remixes. Shipped both in one build. 48 normal levels, 12 hard variants.
+
+### Sector 5: Maelstrom (levels 37–48) — two new mechanics
+
+- **Wind zones** — `winds: [{x, y, w, h, ax, ay}]`. Constant acceleration
+  (ax,ay) px/s² while the ship's center is inside the rect. Wired into
+  `accelAt` in the pure core, so physics, aim preview, ghost, and the node
+  solver all agree. Rendered as translucent cyan rects with animated streak
+  lines drifting along (ax,ay); streak speed scales with strength.
+- **Patrol comets** — `patrols: [{x1, y1, x2, y2, r, period, phase}]`. Killer
+  comets ping-ponging linearly between endpoints; `patrolPos(p, t)` is a pure
+  function of time (triangle wave, no integration drift), so aim-screen and
+  flight patrols stay in sync. Kill radius follows the comet convention,
+  `deadWhy = 'patrol'`. Rendered amber/orange: dashed gold path line between
+  endpoints, short motion trail, glowing rocky body — distinct from red hazards.
+- Pure-core additions (game.js, all before `/*__DOM__*/`): `patrolPos`, wind
+  loop in `accelAt`, patrol kill-loop in `stepAttempt`, optional `t0` pre-roll
+  param on `simulateLaunch(level, angle, speed, maxT, t0)` — backward compatible.
+  Old levels guarded via `(level.winds||[])` / `(level.patrols||[])`.
+- Levels 1–36 verified JSON-identical to origin/main after the merge.
+
+The 12 levels: 37 First Breeze · 38 Updraft · 39 Cross Traffic · 40 Storm
+Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst ·
+45 Locked in the Storm · 46 Eye Wall · 47 Tempest Gate · 48 Maelstrom's Eye.
+
+### Hard Mode — 12 Abyss remixes (levels 25–36)
+
+- One toggle button on the LEVEL SELECT overlay only (never in the in-level
+  HUD — the v0.5.x narrow-phone fixes are untouched). `G.hardMode` is session
+  state, deliberately NOT persisted; toggling rebuilds the grid.
+- Hard grid shows only the 12 variant nodes (amber/red styling) with their own
+  hard stars; normal grid total fixed from stale `' / 72 ★'` to dynamic
+  `LEVELS.length * 3` (now `144 ★`); hard total is `36 ★`.
+- Unlock rule: beat the normal variant to open its hard variant
+  (`save.stars[i] > 0` for i in 24..35).
+- Progress lives under a separate key `milkrun_hard_v1` (`hardSave.stars[12]`);
+  absent key = all zeros, values clamped 0–3. Normal save untouched.
+- `activeLevel()` = `G.hardMode ? HARD_LEVELS[G.levelIndex+1] : LEVELS[G.levelIndex]`;
+  all `LEVELS[G.levelIndex]` call sites (physics, preview, ghost, HUD, win,
+  rumble, particles) route through it. `onWin` records hard stars and SKIPS
+  ghost recording in hard mode (ghosts stay normal-geometry); `drawGhost()`
+  early-returns in hard mode. Win-screen "next" needs no change.
+- Intro card kicker gets a red HARD badge: `LEVEL 25 · ABYSS [HARD]`.
+- The 12 variants (hard-levels.js, keyed 25–36) use only pre-existing mechanics:
+  tighter geometry, stronger hazards, relocated shards, smaller targets —
+  Trampoline, Boomerang, Locked Door, Toll Booth, Thread the Needle,
+  Event Horizon, The Vault, Orbit Decay, Comet Crossfire, Gauntlet II,
+  Wormhole Chain, Abyssal Heart.
+
+### Verification (all on the merged tree, not the build branches)
+
+- **Solver** (pure core + levels.js + hard-levels.js, STEP=1/120, 60 s cap,
+  360 angles × speeds 200–700; t0 ∈ {0,0.25,…,maxPeriod} on patrol levels):
+  all 12 Maelstrom levels AND all 12 hard variants have a **single-launch,
+  all-shards win**. Canonical: L37 0°/200 · L38 341°/700 · L39 0°/300 ·
+  L40 356°/200 · L41 0°/500 · L42 0°/200 · L43 346°/600 · L44 0°/400 ·
+  L45 0°/200 · L46 0°/300 · L47 0°/200 · L48 0°/600 (all t0=0, wide windows,
+  no frame-perfect timing). H25 338°/400 · H26 0°/200 · H27 5°/700 ·
+  H28 56°/700 · H29 354°/200 · H30 69°/700 · H31 61°/200 · H32 340°/700 ·
+  H33 0°/200 · H34 112°/500 · H35 317°/200 · H36 238°/300.
+- **Render sweep** (full game.js in node vm with DOM shims, levels.js +
+  hard-levels.js loaded as index.html does): all **48 normal + 12 hard**
+  variants, aim + flying states — **ALL PASS, zero exceptions.** Instrumented
+  counters prove real execution: drawWind 2728 calls, drawPatrol 2728 calls.
+- **Hard functional**: toggle on/off, hard grid, HARD badge intro, solver
+  winning launches executed in-vm (several variants won live in the sweep),
+  hard stars persisted under `milkrun_hard_v1`, normal save untouched, hard-off
+  restores the normal level — ALL PASS.
+- **Narrow phone** (390×844 viewport): select overlay, hard toggle, hard
+  intro, aim HUD, pause, Sector 5 aim, wind flight — ALL PASS.
+
+### Integration notes
+
+- `index.html` script order: `levels.js`, then `hard-levels.js`, then `game.js`.
+- Added the one-line FAIL_TEXT entry the patrol mechanic needed:
+  `patrol: 'Clipped by a patrol comet.'`
+- **Caught by the merged render sweep**: after the merge, `drawBounceHalo` was
+  nested inside `drawRock` again — the exact v0.7.1 scoping-crash pattern,
+  reintroduced as an edit artifact during integration (the worker branches were
+  clean; the corruption appeared in the final tree). 8 levels failed render.
+  Repaired the brace, re-ran the full sweep: ALL PASS. This is why the merged
+  sweep exists — real render execution caught what `node --check` cannot.

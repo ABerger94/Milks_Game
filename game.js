@@ -43,7 +43,21 @@ function accelAt(x, y, level) {
   for (let i = 0; i < ps.length; i++) { r = addWell(ax, ay, x, y, ps[i].x, ps[i].y, ps[i].m); ax = r[0]; ay = r[1]; }
   const bs = level.blackholes || [];
   for (let i = 0; i < bs.length; i++) { r = addWell(ax, ay, x, y, bs[i].x, bs[i].y, bs[i].m); ax = r[0]; ay = r[1]; }
+  // wind zones: constant acceleration while the ship's center is inside the rect
+  const ws = level.winds || [];
+  for (let i = 0; i < ws.length; i++) {
+    const w = ws[i];
+    if (x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h) { ax += w.ax; ay += w.ay; }
+  }
   return { ax, ay };
+}
+
+// Patrol comet position: pure function of time (no integration drift).
+// Ping-pongs linearly between (x1,y1) and (x2,y2); period in seconds, phase 0..1.
+function patrolPos(p, t) {
+  const ph = (((t / p.period) + p.phase) % 1 + 1) % 1;
+  const tri = ph < 0.5 ? 2 * ph : 2 - 2 * ph;
+  return { x: p.x1 + (p.x2 - p.x1) * tri, y: p.y1 + (p.y2 - p.y1) * tri, r: p.r };
 }
 
 function newAttempt(level) {
@@ -132,6 +146,10 @@ function stepAttempt(st, level, dt) {
     }
   for (const c of st.comets)
     if (hitR(c.x, c.y, c.r + SHIP_R - 2)) { st.dead = true; st.deadWhy = 'comet'; return 'dead'; }
+  for (const pl of (level.patrols || [])) {
+    const pp = patrolPos(pl, st.t);
+    if (hitR(pp.x, pp.y, pl.r + SHIP_R - 2)) { st.dead = true; st.deadWhy = 'patrol'; return 'dead'; }
+  }
 
   (level.depots || []).forEach((d, i) => {
     if (st.depotsUsed.has(i)) return;
@@ -175,8 +193,12 @@ function previewPath(level, x, y, vx, vy, t0) {
 }
 
 // Solver helper: fire one launch, simulate up to maxT seconds. Returns 'win' | 'dead' + detail.
-function simulateLaunch(level, angle, speed, maxT) {
+// t0 (optional, default 0) pre-rolls ambient time before the launch — lets the
+// solver model the player waiting for patrols / orbiting stations before firing.
+function simulateLaunch(level, angle, speed, maxT, t0) {
   const st = newAttempt(level);
+  let pre = t0 || 0;
+  while (pre > 0) { const dt = Math.min(PREV_DT, pre); stepAmbient(st, level, dt); pre -= dt; }
   st.vx = Math.cos(angle) * speed;
   st.vy = Math.sin(angle) * speed;
   st.flying = true;
@@ -221,6 +243,44 @@ function writeSave() {
 }
 function levelUnlocked(i) { return i === 0 || save.stars[i - 1] > 0; }
 function totalStars() { return save.stars.reduce((a, b) => a + b, 0); }
+
+/* ================= HARD MODE SAVE ================= */
+// Hard variants cover levels 25-36 (HARD_LEVELS keyed by level NUMBER).
+// hardSave.stars[k] holds stars for level number HARD_FIRST+1+k.
+const HARD_SAVE_KEY = 'milkrun_hard_v1';
+const HARD_FIRST = 24;      // 0-based index of level 25
+const HARD_COUNT = 12;
+let hardSave = { stars: [] };
+function sizeHardSave() {
+  while (hardSave.stars.length < HARD_COUNT) hardSave.stars.push(0);
+  hardSave.stars.length = HARD_COUNT;
+}
+sizeHardSave();
+function loadHardSave() {
+  try {
+    const raw = localStorage.getItem(HARD_SAVE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (Array.isArray(s.stars)) hardSave.stars = s.stars.map(n => Math.max(0, Math.min(3, n | 0)));
+      sizeHardSave();
+    }
+  } catch (e) { /* storage unavailable: play session-only */ }
+}
+function writeHardSave() {
+  try { localStorage.setItem(HARD_SAVE_KEY, JSON.stringify(hardSave)); } catch (e) {}
+}
+// A hard variant unlocks once its normal counterpart is beaten.
+function hardUnlocked(i) { return i >= HARD_FIRST && i < HARD_FIRST + HARD_COUNT && save.stars[i] > 0; }
+function totalHardStars() { return hardSave.stars.reduce((a, b) => a + b, 0); }
+loadHardSave();
+
+/* Active level: the normal table, or the hard variant when hard mode is on.
+   G.levelIndex stays the 0-based normal index in both modes; hard variants
+   are keyed by level NUMBER (25-36). G.hardMode is session state —
+   undefined/falsy means off, so normal boot needs no migration. */
+function activeLevel() {
+  return G.hardMode ? HARD_LEVELS[G.levelIndex + 1] : LEVELS[G.levelIndex];
+}
 
 /* ================= AUDIO (all synthesized) ================= */
 const AudioSys = {
@@ -316,7 +376,7 @@ function maybeRumble(dt) {
   if (G.screen !== 'flying' || !G.att || G.att.dead) { G.rumbleT = 0; return; }
   const a = G.att;
   let near = false;
-  for (const b of (LEVELS[G.levelIndex].blackholes || [])) {
+  for (const b of (activeLevel().blackholes || [])) {
     const dx = a.x - b.x, dy = a.y - b.y;
     if (dx * dx + dy * dy < 280 * 280) { near = true; break; }
   }
@@ -377,6 +437,7 @@ const FAIL_TEXT = {
   blackhole: 'Swallowed by the black hole.',
   asteroid: 'Shredded by an asteroid.',
   comet: 'Clipped by a comet.',
+  patrol: 'Clipped by a patrol comet.',
   lost: 'Drifted off into the void.',
   stall: 'Lost in the drift.',
   nolaunch: 'Out of launches.'
@@ -417,6 +478,7 @@ function toSelect() {
 }
 function buildLevelGrid() {
   const wrap = $('level-grid'); wrap.innerHTML = '';
+  if (G.hardMode) { buildHardGrid(wrap); return; }
   let s = -1;
   LEVELS.forEach((lv, i) => {
     if (lv.sector !== s) {
@@ -436,12 +498,49 @@ function buildLevelGrid() {
     else b.addEventListener('click', () => sDenied());
     wrap.appendChild(b);
   });
-  $('total-stars').textContent = totalStars() + ' / 72 ★';
+  const ts = $('total-stars');
+  ts.textContent = totalStars() + ' / ' + (LEVELS.length * 3) + ' ★';
+  ts.classList.remove('hard-total');
 }
+
+// Hard-mode level select: only the 12 Abyss variants, each unlocked by
+// beating its normal counterpart. Stars render in amber hard styling.
+function buildHardGrid(wrap) {
+  const h = document.createElement('div');
+  h.className = 'sector-head hard-head';
+  h.textContent = 'Abyss — hard mode · beat the normal level to unlock its variant';
+  wrap.appendChild(h);
+  for (let i = HARD_FIRST; i < HARD_FIRST + HARD_COUNT; i++) {
+    const b = document.createElement('button');
+    const unlocked = hardUnlocked(i);
+    b.className = 'lvl hard' + (unlocked ? '' : ' locked');
+    const st = hardSave.stars[i - HARD_FIRST];
+    b.innerHTML = '<span class="lvl-n">' + (i + 1) + '</span>' +
+      '<span class="lvl-s">' + '★'.repeat(st) + '<span class="dim">' + '★'.repeat(3 - st) + '</span></span>';
+    b.title = HARD_LEVELS[i + 1].name;
+    if (unlocked) b.addEventListener('click', () => { sClick(); startLevel(i, true); });
+    else b.addEventListener('click', () => sDenied());
+    wrap.appendChild(b);
+  }
+  const ts = $('total-stars');
+  ts.textContent = totalHardStars() + ' / ' + (HARD_COUNT * 3) + ' ★';
+  ts.classList.add('hard-total');
+}
+
+// Hard-mode toggle: lives on the level-select overlay only, never in the
+// in-level HUD. G.hardMode is session state (not persisted to storage).
+function toggleHardMode() {
+  G.hardMode = !G.hardMode;
+  const b = $('btn-hard-toggle');
+  b.textContent = G.hardMode ? 'HARD MODE: ON' : 'HARD MODE: OFF';
+  b.classList.toggle('on', !!G.hardMode);
+  buildLevelGrid();
+}
+$('btn-hard-toggle').addEventListener('click', () => { sClick(); toggleHardMode(); });
 
 function startLevel(i, withIntro) {
   G.levelIndex = i;
-  const lv = LEVELS[i];
+  const lv = activeLevel();
   G.att = newAttempt(lv);
   G.launchesLeft = lv.launches;
   G.launchesUsed = 0;
@@ -460,7 +559,8 @@ function startLevel(i, withIntro) {
 // Shown when entering from level select or the win screen — never on retry,
 // so a failed run doesn't make you tap through it again.
 function showIntroCard(lv, i) {
-  $('intro-kicker').textContent = 'LEVEL ' + (i + 1) + ' · ' + SECTORS[lv.sector].name.toUpperCase();
+  const kick = 'LEVEL ' + (i + 1) + ' · ' + SECTORS[lv.sector].name.toUpperCase();
+  $('intro-kicker').innerHTML = G.hardMode ? kick + ' <span class="hard-badge">HARD</span>' : kick;
   $('intro-name').textContent = lv.name;
   let stats = lv.launches + ' launches · par ' + lv.par + ' · ' + lv.shards.length + ' shards';
   if (lv.station.gate) stats += ' · station locked: ' + lv.station.gate + '◆';
@@ -491,19 +591,27 @@ function togglePause(force) {
 }
 
 function onWin() {
-  const lv = LEVELS[G.levelIndex];
+  const lv = activeLevel();
   const att = G.att;
   let stars = 1;
   if (G.launchesUsed <= lv.par) stars++;
   if (att.shardsGot.size >= (lv.shards || []).length) stars++;
   G.winStars = stars;
-  if (stars > save.stars[G.levelIndex]) { save.stars[G.levelIndex] = stars; writeSave(); }
-  // Record the winning shot as this level's ghost (only if it's at least as
-  // good as the stored one, so a 1-star win never overwrites a 3-star ghost).
-  const gh = save.ghosts[G.levelIndex];
-  if (G.lastLaunch && (!gh || stars >= gh.stars)) {
-    save.ghosts[G.levelIndex] = { vx: G.lastLaunch.vx, vy: G.lastLaunch.vy, stars };
-    writeSave();
+  if (G.hardMode) {
+    // Hard-mode stars live in their own table (hardSave). Ghost recording is
+    // skipped in hard mode: ghosts are normal-geometry best trajectories, and
+    // replaying one over hard geometry would be nonsense.
+    const k = G.levelIndex - HARD_FIRST;
+    if (stars > hardSave.stars[k]) { hardSave.stars[k] = stars; writeHardSave(); }
+  } else {
+    if (stars > save.stars[G.levelIndex]) { save.stars[G.levelIndex] = stars; writeSave(); }
+    // Record the winning shot as this level's ghost (only if it's at least as
+    // good as the stored one, so a 1-star win never overwrites a 3-star ghost).
+    const gh = save.ghosts[G.levelIndex];
+    if (G.lastLaunch && (!gh || stars >= gh.stars)) {
+      save.ghosts[G.levelIndex] = { vx: G.lastLaunch.vx, vy: G.lastLaunch.vy, stars };
+      writeSave();
+    }
   }
   G.screen = 'win';
   sDelivery();
@@ -607,7 +715,7 @@ function updateParticles(dt) {
       }
     }
     // ambient juice: black-hole inflow sparks + shard twinkles / magnet streaks
-    const lv = LEVELS[G.levelIndex], a = G.att;
+    const lv = activeLevel(), a = G.att;
     for (const b of (lv.blackholes || [])) {
       if (Math.random() < 0.35) {
         const ang = Math.random() * 6.283, rad = b.r * (1.6 + Math.random() * 1.2);
@@ -714,13 +822,13 @@ $('btn-levels-fail').addEventListener('click', () => { sClick(); toSelect(); });
 function retryAttempt() {
   // Out of launches: retry becomes a full level restart (fresh budgets + banks).
   if (G.launchesLeft <= 0) { startLevel(G.levelIndex); return; }
-  G.att = newAttempt(LEVELS[G.levelIndex]);
+  G.att = newAttempt(activeLevel());
   // Banked progress carries into the fresh attempt: shards stay collected,
   // used depots stay used (no refarming).
   for (const i of G.levelShards) G.att.shardsGot.add(i);
   for (const i of G.levelDepots) G.att.depotsUsed.add(i);
   // Banked shards may already satisfy the gate — recalculate.
-  const _gate = (LEVELS[G.levelIndex].station && LEVELS[G.levelIndex].station.gate) || 0;
+  const _gate = (activeLevel().station && activeLevel().station.gate) || 0;
   if (_gate > 0 && G.att.shardsGot.size >= _gate) G.att.gateOpen = true;
   G.aiming = false;
   G.particles = [];
@@ -745,11 +853,11 @@ function handleAttemptEvents() {
     a.depotHit = false;
     G.launchesLeft = Math.min(9, G.launchesLeft + 1);
     sDepot();
-    const d = LEVELS[G.levelIndex].depots[[...a.depotsUsed].pop()];
+    const d = activeLevel().depots[[...a.depotsUsed].pop()];
     if (d) { burst(d.x, d.y, 20, ['#9fff9f', '#ffffff']); shockwave(d.x, d.y, 80, '159,255,159'); }
   }
   if (a.shardHit >= 0) {
-    const s = LEVELS[G.levelIndex].shards[a.shardHit];
+    const s = activeLevel().shards[a.shardHit];
     a.shardHit = -1;
     sPickup(a.shardsGot.size - 1);
     if (s) burst(s.x, s.y, 14, ['#aef4ff', '#ffffff']);
@@ -763,7 +871,7 @@ function handleAttemptEvents() {
   }
   if (a.gateUnlocked) {
     a.gateUnlocked = false; sGateOpen();
-    const sp = stationPos(LEVELS[G.levelIndex], a.t);
+    const sp = stationPos(activeLevel(), a.t);
     shockwave(sp.x, sp.y, 120, '255,210,120');
     burst(sp.x, sp.y, 26, ['#ffd778', '#ffffff']);
   }
@@ -783,7 +891,7 @@ function frame(now) {
     acc += dt;
     let n = 0;
     while (acc >= STEP && n < 10) {
-      const ev = stepAttempt(G.att, LEVELS[G.levelIndex], STEP);
+      const ev = stepAttempt(G.att, activeLevel(), STEP);
       acc -= STEP; n++;
       handleAttemptEvents();
       if (ev === 'win') { acc = 0; onWin(); break; }
@@ -905,6 +1013,7 @@ function drawRock(x, y, r, seed, rot) {
   ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.restore();
 }
+
 // trampoline rock: teal glow ring + chevrons so it reads as bouncy, not deadly
 function drawBounceHalo(a, t) {
   ctx.save();
@@ -1065,9 +1174,11 @@ function drawTrail(att) {
 function drawGhost() {
   // Best-trajectory ghost: faint gold replay of your best winning shot,
   // drawn under your own aim preview. Pure hint layer — no physics changes.
+  // Skipped in hard mode: ghosts are normal-geometry best shots.
+  if (G.hardMode) return;
   const g = save.ghosts[G.levelIndex];
   if (!g) return;
-  const lv = LEVELS[G.levelIndex], a = G.att;
+  const lv = activeLevel(), a = G.att;
   const pv = previewPath(lv, a.x, a.y, g.vx, g.vy, a.t);
   ctx.save();
   for (let i = 0; i < pv.pts.length; i += 6) {
@@ -1082,7 +1193,7 @@ function drawGhost() {
 }
 
 function drawAim() {
-  const a = G.att, lv = LEVELS[G.levelIndex];
+  const a = G.att, lv = activeLevel();
   const v = aimVelocity();
   const sx = a.x, sy = a.y;
   // elastic: drawn along the pull direction from the ship
@@ -1126,7 +1237,7 @@ function drawBottle(x, y, full) {
 }
 
 function drawHUD() {
-  const lv = LEVELS[G.levelIndex];
+  const lv = activeLevel();
   ctx.save();
   ctx.textBaseline = 'top';
   // launches as bottles
@@ -1180,7 +1291,85 @@ function drawParticles() {
   ctx.globalAlpha = 1;
 }
 
+// Wind zone: translucent cyan rect with streak lines drifting along the (ax,ay)
+// direction. Cyan/white palette — visually distinct from red hazards.
+function drawWind(w, t) {
+  const m = Math.hypot(w.ax, w.ay) || 1;
+  const dx = w.ax / m, dy = w.ay / m;
+  ctx.save();
+  ctx.fillStyle = 'rgba(110,210,255,0.06)';
+  ctx.fillRect(w.x, w.y, w.w, w.h);
+  ctx.strokeStyle = 'rgba(140,225,255,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 8]);
+  ctx.strokeRect(w.x, w.y, w.w, w.h);
+  ctx.setLineDash([]);
+  // clip the animated streaks to the zone rect
+  ctx.beginPath();
+  ctx.rect(w.x, w.y, w.w, w.h);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(200,245,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  const spacing = 72, len = 30;
+  const sp = 110 + m * 0.45;   // streak speed scales with wind strength
+  const rows = Math.ceil(w.h / spacing), cols = Math.ceil(w.w / spacing);
+  for (let rI = 0; rI <= rows; rI++) {
+    for (let cI = 0; cI <= cols; cI++) {
+      const bx = w.x + cI * spacing, by = w.y + rI * spacing;
+      const off = (((t * sp) % (spacing * 2)) + spacing * 2) % (spacing * 2) - spacing;
+      const px = bx + dx * off, py = by + dy * off;
+      ctx.beginPath();
+      ctx.moveTo(px - dx * len / 2, py - dy * len / 2);
+      ctx.lineTo(px + dx * len / 2, py + dy * len / 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// Patrol comet: amber/orange comet-like body at its pure time position, with a
+// dashed gold path line between its endpoints and a short motion trail.
+function drawPatrol(p, t) {
+  const att = G.att;
+  const ct = att ? att.t : t;
+  const pp = patrolPos(p, ct);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,190,90,0.55)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath();
+  ctx.moveTo(p.x1, p.y1);
+  ctx.lineTo(p.x2, p.y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (let k = 5; k >= 1; k--) {
+    const q = patrolPos(p, ct - k * 0.12);
+    ctx.fillStyle = 'rgba(255,170,60,' + (0.06 * (6 - k)).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, Math.max(1, q.r * (1 - k * 0.12)), 0, 6.283);
+    ctx.fill();
+  }
+  const g = ctx.createRadialGradient(pp.x, pp.y, 1, pp.x, pp.y, pp.r * 2.2);
+  g.addColorStop(0, 'rgba(255,180,70,0.55)');
+  g.addColorStop(1, 'rgba(255,180,70,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(pp.x, pp.y, pp.r * 2.2, 0, 6.283);
+  ctx.fill();
+  ctx.restore();
+  drawRock(pp.x, pp.y, pp.r, 90, t * 0.8);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,200,100,0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(pp.x, pp.y, pp.r + 5, 0, 6.283);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function renderWorld(lv, att, t) {
+  (lv.winds || []).forEach(w => drawWind(w, t));
   (lv.wormholes || []).forEach((w, i) => drawWormhole(w, i));
   (lv.planets || []).forEach((p, i) => drawPlanet(p, i));
   (lv.blackholes || []).forEach(drawBlackHole);
@@ -1195,6 +1384,7 @@ function renderWorld(lv, att, t) {
     ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 2.4, 0, 6.283); ctx.fill();
     drawRock(c.x, c.y, c.r, 40 + i, t * 0.8);
   });
+  (lv.patrols || []).forEach(p => drawPatrol(p, t));
   (lv.depots || []).forEach((d, i) => drawDepot(d, att ? att.depotsUsed.has(i) : false));
   (lv.shards || []).forEach((s, i) => { if (!(att && att.shardsGot.has(i))) drawShard(s, t); });
   const gateN = (lv.station && lv.station.gate) || 0;
@@ -1234,7 +1424,7 @@ function render() {
   if (G.screen === 'title' || G.screen === 'select') {
     renderIdle(G.idleT);
   } else {
-    const lv = LEVELS[G.levelIndex];
+    const lv = activeLevel();
     renderWorld(lv, G.att, G.time);
     if (G.screen === 'aim') { drawGhost(); if (G.aiming) drawAim(); }
   }

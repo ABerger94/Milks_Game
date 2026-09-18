@@ -32,13 +32,17 @@ canvas, all sound is synthesized with WebAudio.
 
 ## Stars & progress
 
-24 levels across 3 sectors (Drift / Rogue / Void). Each level awards up to
+48 levels across 5 sectors (Drift / Rogue / Void / Abyss / Maelstrom). Each level awards up to
 3 stars: 1 for delivery, +1 for finishing within par launches, +1 for
 collecting every shard. Progress and stars persist in `localStorage`.
 
+**Hard Mode:** beating an Abyss level (25–36) unlocks its harder remix via the
+toggle on the level-select screen. Hard variants keep their own stars and
+their own best-shot ghosts.
+
 ## Tech
 
-- `index.html` + `style.css` + `game.js` + `levels.js`. Zero dependencies.
+- `index.html` + `style.css` + `game.js` + `levels.js` + `hard-levels.js`. Zero dependencies.
 - Fixed-timestep physics (120 Hz); the aim preview uses the exact same
   integrator as flight (240 steps ≈ 3 s).
 - Newtonian gravity from planets and black holes (F = G·m/r², softened).

@@ -246,14 +246,17 @@ function totalStars() { return save.stars.reduce((a, b) => a + b, 0); }
 
 /* ================= HARD MODE SAVE ================= */
 // Hard variants cover levels 25-36 (HARD_LEVELS keyed by level NUMBER).
-// hardSave.stars[k] holds stars for level number HARD_FIRST+1+k.
+// hardSave.stars[k] holds stars for level number HARD_FIRST+1+k; hardSave.ghosts[k]
+// holds that variant's best winning launch vector {vx,vy,stars} | null (hard geometry).
 const HARD_SAVE_KEY = 'milkrun_hard_v1';
 const HARD_FIRST = 24;      // 0-based index of level 25
 const HARD_COUNT = 12;
-let hardSave = { stars: [] };
+let hardSave = { stars: [], ghosts: [] };
 function sizeHardSave() {
   while (hardSave.stars.length < HARD_COUNT) hardSave.stars.push(0);
   hardSave.stars.length = HARD_COUNT;
+  while (hardSave.ghosts.length < HARD_COUNT) hardSave.ghosts.push(null);
+  hardSave.ghosts.length = HARD_COUNT;
 }
 sizeHardSave();
 function loadHardSave() {
@@ -262,6 +265,9 @@ function loadHardSave() {
     if (raw) {
       const s = JSON.parse(raw);
       if (Array.isArray(s.stars)) hardSave.stars = s.stars.map(n => Math.max(0, Math.min(3, n | 0)));
+      // hard ghost: best winning launch vector per hard variant {vx,vy,stars} | null
+      if (Array.isArray(s.ghosts))
+        hardSave.ghosts = s.ghosts.map(g => (g && isFinite(g.vx) && isFinite(g.vy)) ? { vx: +g.vx, vy: +g.vy, stars: g.stars | 0 } : null);
       sizeHardSave();
     }
   } catch (e) { /* storage unavailable: play session-only */ }
@@ -646,11 +652,19 @@ function onWin() {
   if (att.shardsGot.size >= (lv.shards || []).length) stars++;
   G.winStars = stars;
   if (G.hardMode) {
-    // Hard-mode stars live in their own table (hardSave). Ghost recording is
-    // skipped in hard mode: ghosts are normal-geometry best trajectories, and
-    // replaying one over hard geometry would be nonsense.
+    // Hard-mode progress lives in its own table (hardSave): stars AND ghosts.
+    // Hard ghosts are recorded against hard geometry, so they replay correctly
+    // over the hard variant (never the normal table's ghost).
     const k = G.levelIndex - HARD_FIRST;
     if (stars > hardSave.stars[k]) { hardSave.stars[k] = stars; writeHardSave(); }
+    // Record the winning shot as this hard variant's ghost (only if it's at
+    // least as good as the stored one, so a 1-star win never overwrites a
+    // 3-star ghost).
+    const hgh = hardSave.ghosts[k];
+    if (G.lastLaunch && (!hgh || stars >= hgh.stars)) {
+      hardSave.ghosts[k] = { vx: G.lastLaunch.vx, vy: G.lastLaunch.vy, stars };
+      writeHardSave();
+    }
   } else {
     if (stars > save.stars[G.levelIndex]) { save.stars[G.levelIndex] = stars; writeSave(); }
     // Record the winning shot as this level's ghost (only if it's at least as
@@ -1224,9 +1238,9 @@ function drawTrail(att) {
 function drawGhost() {
   // Best-trajectory ghost: faint gold replay of your best winning shot,
   // drawn under your own aim preview. Pure hint layer — no physics changes.
-  // Skipped in hard mode: ghosts are normal-geometry best shots.
-  if (G.hardMode) return;
-  const g = save.ghosts[G.levelIndex];
+  // Hard mode draws that variant's own hard ghost (recorded against hard
+  // geometry), never the normal table's ghost.
+  const g = G.hardMode ? hardSave.ghosts[G.levelIndex - HARD_FIRST] : save.ghosts[G.levelIndex];
   if (!g) return;
   const lv = activeLevel(), a = G.att;
   const pv = previewPath(lv, a.x, a.y, g.vx, g.vy, a.t);
@@ -1238,7 +1252,7 @@ function drawGhost() {
   }
   ctx.fillStyle = 'rgba(255,226,127,0.5)';
   ctx.font = '11px -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillText('GHOST — your best shot', a.x + 22, a.y - 34);
+  ctx.fillText(G.hardMode ? 'HARD GHOST — your best shot' : 'GHOST — your best shot', a.x + 22, a.y - 34);
   ctx.restore();
 }
 

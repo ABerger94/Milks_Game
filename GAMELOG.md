@@ -348,3 +348,32 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
   flying state — zero exceptions.
 - Not headless-testable: actual mix balance of whoosh/warning against the
   rumble and the ambient pad on phone speakers — for Alek's live play-test.
+
+## v0.11 — 2026-09-18 — Hard Mode gets ghosts
+- **The gap:** best-trajectory ghosts (v0.5) only recorded normal-mode wins —
+  v0.8 deliberately skipped hard mode, so the 12 hardest levels had no hint
+  layer at all. Hard ghosts are now recorded per hard variant, stored under
+  the existing `milkrun_hard_v1` key as `ghosts[12]` alongside stars (old
+  keys with stars-only migrate to 12 null ghosts; corrupt entries sanitize
+  to null, same as the normal table).
+- **Correctness:** a hard ghost is recorded against hard geometry and drawn
+  over the hard variant via `activeLevel()` — the normal table's ghost is
+  never replayed over hard geometry (the v0.8 concern that caused the skip).
+  Same replace-protection as normal ghosts: a lower-star win never
+  overwrites a better ghost. The aim-screen label reads
+  "HARD GHOST — your best shot" to distinguish it.
+- **Also:** README was stale since v0.7 (still said "24 levels across
+  3 sectors" and omitted `hard-levels.js`) — now describes 48 levels across
+  5 sectors + the 12 Hard Mode remixes.
+- Verified headlessly with a DOM-shim harness loading the real game.js
+  (20/20): hard ghost recorded on hard win (normal save untouched),
+  2-star win doesn't overwrite a 3-star ghost / 3-star does, write/load
+  round-trip persists ghosts + stars, old stars-only key migrates cleanly,
+  corrupt entries sanitize, drawGhost routes to the hard ghost with the HARD
+  label in hard mode / stays silent with none / keeps the plain GHOST label
+  in normal mode, normal win still records normal ghosts, and a full
+  render() on a hard aim screen with a ghost throws nothing.
+  `node --check` clean. No physics or level-geometry changes — the v0.9
+  solver's 60/60 verification still holds, so the solver was not re-run.
+- Not headless-testable: whether the HARD GHOST label/opacity reads well on
+  a real phone screen — for Alek's live play-test.

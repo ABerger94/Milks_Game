@@ -1430,6 +1430,28 @@ function drawPatrol(p, t) {
   ctx.arc(pp.x, pp.y, pp.r + 5, 0, 6.283);
   ctx.stroke();
   ctx.restore();
+  // aim-screen only: show where this patrol is headed next (see below)
+  if (G.screen === 'aim' && G.att) drawPatrolTelegraph(p, ct);
+}
+
+// Patrol timing telegraph: on the aim screen, mark where each patrol comet
+// WILL BE over the next ~3.5 s as fading amber dots along its path. The dashed
+// path line shows *where* a patrol goes; the telegraph shows *when*, so shots
+// around movers can be timed at a glance — the visual counterpart to the v0.10
+// proximity-warning audio. Pure render layer (patrolPos is pure); no physics,
+// level, or save changes.
+function drawPatrolTelegraph(p, ct) {
+  const N = 14, DT = 0.25;   // 14 dots x 0.25 s ~= 3.5 s, just past the preview window
+  ctx.save();
+  for (let k = 1; k <= N; k++) {
+    const q = patrolPos(p, ct + k * DT);
+    const f = k / N;
+    ctx.fillStyle = 'rgba(255,190,90,' + (0.55 - f * 0.47).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, Math.max(2, p.r * (0.5 - f * 0.18)), 0, 6.283);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function renderWorld(lv, att, t) {

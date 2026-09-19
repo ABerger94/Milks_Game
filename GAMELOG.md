@@ -377,3 +377,27 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
   solver's 60/60 verification still holds, so the solver was not re-run.
 - Not headless-testable: whether the HARD GHOST label/opacity reads well on
   a real phone screen — for Alek's live play-test.
+
+## v0.12 — 2026-09-19 — patrol timing telegraph
+- **The gap:** patrol comets are the one mover the 3-second trajectory preview
+  can't fully telegraph — the dashed gold path line shows *where* a patrol
+  goes but not *when* it will be there, so timing shots on the 8 patrol
+  levels (39, 40, 43, 44, 45, 46, 47, 48) meant eyeballing a moving body
+  against its path. v0.10 added the audio proximity warning for this; this is
+  its visual counterpart.
+- **What:** on the aim screen, each patrol comet now paints its future
+  positions over the next ~3.5 s (14 dots × 0.25 s, just past the preview
+  window) as fading amber dots along its path — alpha 0.55 → 0.08, radius
+  shrinking. The dots advance live with the level clock, so they stay in sync
+  with launch-time physics: what you see is where the patrol will actually be.
+- Aim-screen only — flying keeps the v0.10 audio telegraph, intro/pause stay
+  clean. Pure render layer (`patrolPos` was already pure): no physics,
+  level-geometry, save, or localStorage changes, so the v0.9 solver's 60/60
+  verification still holds and the solver was not re-run.
+- Verified headlessly with a DOM-shim harness (22/22): telegraph fires once
+  per patrol on all 8 patrol levels, silent on flying/paused/intro screens
+  and on patrol-less levels, 14 dots with strictly decreasing alpha/radius
+  lying on the patrol path and tracking `att.t`; 60/60 aim renders (48 normal
+  + 12 hard) throw nothing. `node --check` clean on all JS.
+- Not headless-testable: whether the dot density/alpha reads well on a real
+  phone screen — for Alek's live play-test.

@@ -17,8 +17,10 @@ canvas, all sound is synthesized with WebAudio.
   flight live, bending around gravity wells.
 - **Launch:** release. Pull further = more speed.
 - **Restart level:** R key or the ↻ button.
-- **Mute:** M key or the ♪ button.
+- **Mute:** M key or the ♪ button (also silences vibration).
 - **Pause:** Esc / P or the ❚❚ button.
+- **Haptics:** launch, delivery, crash, bounce, wormhole warps, depot and
+  shard pickups, and gate open/deny all buzz on phones that support vibration.
 - Mobile: full touch support, `touch-action: none`, portrait + landscape.
 
 ## Rules

@@ -307,6 +307,7 @@ const AudioSys = {
     if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.02);
     const b = document.getElementById('btn-mute');
     if (b) b.textContent = m ? '✕' : '♪';
+    if (m) { try { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(0); } catch (e) {} }
   },
   tone(freq, dur, type, vol, slideTo, delay) {
     if (!this.ctx || save.muted) return;
@@ -377,6 +378,16 @@ const sDenied   = () => AudioSys.tone(160, 0.15, 'square', 0.1, 110);
 const sBounce   = () => { AudioSys.tone(320, 0.16, 'sine', 0.2, 95); AudioSys.noise(0.08, 0.12, 1400); };
 const sGateDeny = () => { AudioSys.tone(150, 0.18, 'square', 0.12, 85); AudioSys.noise(0.1, 0.1, 500); };
 const sGateOpen = () => { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => AudioSys.tone(f, 0.2, 'triangle', 0.15, null, i * 0.09)); };
+// Haptic feedback (mobile): short vibration patterns paired with the key game
+// events, fired exactly where the matching sfx fires. No-op where
+// navigator.vibrate is unavailable (desktop, iOS). Muting silences buzzing
+// too — the mute button is the quiet button.
+function buzz(p) {
+  if (save.muted) return;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(p);
+  } catch (e) {}
+}
 // Black-hole proximity rumble: low growl while flying near one, throttled.
 function maybeRumble(dt) {
   if (G.screen !== 'flying' || !G.att || G.att.dead) { G.rumbleT = 0; return; }
@@ -677,6 +688,7 @@ function onWin() {
   }
   G.screen = 'win';
   sDelivery();
+  buzz([20, 60, 20, 60, 45]);   // celebratory double-thump
   const stp = stationPos(lv, att.t);
   burst(stp.x, stp.y, 70, ['#ffffff', '#ffe27f', '#7fe2ff']);
   shockwave(stp.x, stp.y, 175, '127,226,255');
@@ -700,6 +712,7 @@ function onFail(why) {
   G.screen = 'fail';
   G.shake = 0.55;
   sExplode();
+  buzz(90);   // heavy thud on death
   const att = G.att;
   if (why !== 'nolaunch' && why !== 'stall') burst(att.x, att.y, 50, ['#ffffff', '#ffb27f', '#ff7f7f']);
   $('fail-sub').textContent = FAIL_TEXT[why] || 'Delivery failed.';
@@ -823,6 +836,7 @@ function doLaunch() {
   G.aiming = false;
   G.screen = 'flying';
   sLaunch();
+  buzz(25);   // short kick on release
   for (let i = 0; i < 12; i++)
     spawnP(a.x, a.y, -v.vx * 0.1 + (Math.random() - .5) * 120, -v.vy * 0.1 + (Math.random() - .5) * 120,
       0.4, 3, '#dff4ff', 2);
@@ -907,32 +921,32 @@ function handleAttemptEvents() {
   for (const i of a.shardsGot) G.levelShards.add(i);
   for (const i of a.depotsUsed) G.levelDepots.add(i);
   if (a.warped) {
-    a.warped = false; sWormhole();
+    a.warped = false; sWormhole(); buzz([12, 30, 12]);
     burst(a.x, a.y, 24, ['#7fffe2', '#ff7fe2', '#ffffff']);
     shockwave(a.x, a.y, 95, '127,255,226');
   }
   if (a.depotHit) {
     a.depotHit = false;
     G.launchesLeft = Math.min(9, G.launchesLeft + 1);
-    sDepot();
+    sDepot(); buzz([15, 45, 15]);
     const d = activeLevel().depots[[...a.depotsUsed].pop()];
     if (d) { burst(d.x, d.y, 20, ['#9fff9f', '#ffffff']); shockwave(d.x, d.y, 80, '159,255,159'); }
   }
   if (a.shardHit >= 0) {
     const s = activeLevel().shards[a.shardHit];
     a.shardHit = -1;
-    sPickup(a.shardsGot.size - 1);
+    sPickup(a.shardsGot.size - 1); buzz(12);
     if (s) burst(s.x, s.y, 14, ['#aef4ff', '#ffffff']);
   }
   if (a.bounced) {
-    a.bounced = false; sBounce(); G.shake = Math.max(G.shake, 0.25);
+    a.bounced = false; sBounce(); buzz(35); G.shake = Math.max(G.shake, 0.25);
     burst(a.x, a.y, 16, ['#7fffe2', '#ffffff']);
   }
   if (a.gateDenied) {
-    a.gateDenied = false; sGateDeny(); G.shake = Math.max(G.shake, 0.35);
+    a.gateDenied = false; sGateDeny(); buzz([50, 40, 50]); G.shake = Math.max(G.shake, 0.35);
   }
   if (a.gateUnlocked) {
-    a.gateUnlocked = false; sGateOpen();
+    a.gateUnlocked = false; sGateOpen(); buzz([20, 50, 20]);
     const sp = stationPos(activeLevel(), a.t);
     shockwave(sp.x, sp.y, 120, '255,210,120');
     burst(sp.x, sp.y, 26, ['#ffd778', '#ffffff']);

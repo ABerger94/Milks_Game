@@ -378,6 +378,8 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
 - Not headless-testable: whether the HARD GHOST label/opacity reads well on
   a real phone screen — for Alek's live play-test.
 
+---
+
 ## v0.12 — 2026-09-19 — patrol timing telegraph
 - **The gap:** patrol comets are the one mover the 3-second trajectory preview
   can't fully telegraph — the dashed gold path line shows *where* a patrol
@@ -401,3 +403,38 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
   + 12 hard) throw nothing. `node --check` clean on all JS.
 - Not headless-testable: whether the dot density/alpha reads well on a real
   phone screen — for Alek's live play-test.
+
+---
+
+## v0.13 — 2026-09-20 — haptic feedback (mobile vibration)
+
+- **The gap:** every key game moment had sound and visuals but no feel — on
+  the phone (the primary platform) launches, crashes, and deliveries were
+  silent to the hand. Two nights of audio telegraphs (v0.4/v0.10) and the
+  v0.12 patrol telegraph all assumed ears and eyes; this is the tactile
+  counterpart, and the whole game already assumed touch input.
+- **What:** `buzz(pattern)` helper in game.js wrapping `navigator.vibrate`,
+  fired exactly where the matching sfx fires — so it stays in sync by
+  construction:
+  - launch: short kick (25 ms) on release
+  - delivery: celebratory double-thump `[20,60,20,60,45]`
+  - death: heavy thud (90 ms)
+  - bounce rock: 35 ms; wormhole warp `[12,30,12]`; fuel depot `[15,45,15]`;
+    shard pickup 12 ms; gate unlock `[20,50,20]`; gate denied `[50,40,50]`
+  - Muting cancels any in-flight vibration (`vibrate(0)`) and silences all
+    future buzzing — the mute button is the quiet button.
+  - No-op where `navigator.vibrate` doesn't exist (desktop, iOS): guarded by
+    `typeof navigator !== 'undefined'` + a try/catch, so the pure core stays
+    import-safe and iOS players see no behavior change.
+- Zero physics, level-geometry, save, or localStorage changes — purely
+  additive event hooks — so the v0.9 solver's 60/60 verification still holds
+  and the solver was not re-run. README Controls updated (mute line, Haptics
+  bullet). `node --check` clean on all JS.
+- Verified headlessly with a DOM-shim harness loading the real game.js
+  (20/20): exact vibration pattern at all 9 event sites driven through the
+  real `doLaunch` / `onWin` / `onFail` / `handleAttemptEvents` paths, mute
+  silences and cancels, no-throw with `navigator` undefined or `vibrate`
+  absent, and a 60/60 aim-render sweep (48 normal + 12 hard) throws nothing.
+- Not headless-testable: whether the patterns feel right on a real phone —
+  vibration motor strength varies by device, and iOS gets nothing at all —
+  for Alek's live play-test.

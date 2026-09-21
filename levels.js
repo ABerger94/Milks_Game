@@ -128,7 +128,7 @@ const LEVELS = [
     sector: 1,
     par: 2,
     launches: 4,
-    tip: "Black holes pull harder the closer you get. Give this one a wide berth - skim, don't hug.",
+    tip: "Black holes pull harder the closer you get. The red ring is the capture zone - inside it, no launch is fast enough to escape. Skim, don't hug.",
     ship: {
       x: 180,
       y: 360

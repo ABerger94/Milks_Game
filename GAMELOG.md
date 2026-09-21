@@ -406,6 +406,39 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
 
 ---
 
+## v0.14 — 2026-09-21 — black-hole capture-zone rings
+- **The gap:** the 3-second trajectory preview shows *where* a black hole bends
+  your flight, but the hole's visual (38 px event horizon + glow) says nothing
+  about *how far the danger reaches* — the black-hole levels (9, 13, 15, 20,
+  the Abyss 25–36 and the hard remixes) are the ones v0.1 flagged as having
+  the narrowest win windows, and grazing them was pure feel.
+- **What:** on the aim screen, each black hole now paints a dashed red ring at
+  its escape-velocity capture radius — the distance where escape speed equals
+  full launch power (r = 2·G·m/MAXV²). Inside it, no straight shot can climb
+  back out: the practical point of no return, telegraphed visually the same
+  way v0.12 telegraphed patrol *timing*. The ring is skipped for weak wells
+  whose radius falls inside the event horizon itself (e.g. the m=2000 holes),
+  where it would teach nothing. Aim-screen only — the v0.4 black-hole rumble
+  stays the in-flight telegraph, mirroring the audio/visual split of the
+  patrol pair.
+- **Teaching:** level 9's tip ("Wide Berth") now names the ring explicitly;
+  README Rules documents it.
+- Zero physics, level-geometry, save, or localStorage changes — a pure
+  `captureRadius(b)` in the physics core plus render layer — so the v0.9
+  solver's 60/60 verification still holds and the solver was not re-run.
+  (The levels.js change is a tip string only, no geometry.)
+- Verified headlessly with a DOM-shim harness loading the real game.js
+  (14/14): captureRadius matches the formula exactly; one dashed red ring at
+  rcap per qualifying hole (~231 px for L9's hole vs its 38 px body); no ring
+  for the sub-horizon well; spy confirms the ring fires on aim and stays
+  silent on flying/paused/intro; a real aim render paints each qualifying
+  hole's ring at the computed radius; 60/60 aim renders (48 normal + 12 hard)
+  throw nothing. `node --check` clean on all JS.
+- Not headless-testable: whether the ring reads as "do not cross" rather than
+  decoration on a real phone screen — for Alek's live play-test.
+
+---
+
 ## v0.13 — 2026-09-20 — haptic feedback (mobile vibration)
 
 - **The gap:** every key game moment had sound and visuals but no feel — on

@@ -28,6 +28,8 @@ canvas, all sound is synthesized with WebAudio.
 - Touch the glowing station ring to deliver. Die if you hit a planet, fall
   into a black hole, clip an asteroid/comet, drift off-screen, or run out
   of launches.
+- On the aim screen, black holes show a red dashed **capture-zone ring**:
+  inside it, even a full-power launch can't escape — plan grazes outside it.
 - Launches per level are limited (milk-bottle icons, top-left).
 - Green **fuel depots** grant +1 launch. **Star shards** add score.
 - **Wormhole pairs** teleport you, keeping your velocity vector.

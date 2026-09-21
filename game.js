@@ -37,6 +37,16 @@ function addWell(ax, ay, x, y, wx, wy, m) {
   return [ax + f * dx, ay + f * dy];
 }
 
+// Escape-velocity capture radius of a gravity well: the distance at which the
+// escape speed equals MAXV, full launch power. Inside this ring no straight
+// shot can climb back out of the well — the practical point of no return.
+// Pure 2-body approximation: ignores softening (SOFT, shifts it ~2%) and other
+// wells, so it is drawn as a telegraph, not a contract. Used only by the aim
+// screen's capture-zone ring; flight physics never consults it.
+function captureRadius(b) {
+  return 2 * GRAV * b.m / (MAXV * MAXV);
+}
+
 function accelAt(x, y, level) {
   let ax = 0, ay = 0, r;
   const ps = level.planets || [];
@@ -1063,6 +1073,26 @@ function drawBlackHole(b) {
   ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.283); ctx.fill();
 }
 
+// Capture-zone ring: on the aim screen, draw a dashed red ring at the
+// black hole's escape-velocity radius (captureRadius, above). The glow and
+// accretion disk say "danger"; the ring says "how far the danger reaches" —
+// inside it, even full launch power can't escape, so a trajectory that
+// threads the ring had better graze nothing. Skipped when the ring would
+// fall inside the event horizon itself (weak wells), where it teaches
+// nothing. Aim-screen only, mirroring the v0.12 patrol telegraph; the v0.4
+// black-hole rumble stays the in-flight telegraph. Pure render layer.
+function drawCaptureRing(b) {
+  const rcap = captureRadius(b);
+  if (!(rcap > b.r)) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,84,84,0.55)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath(); ctx.arc(b.x, b.y, rcap, 0, 6.283); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
 let rockSeeds = {};
 function rockVerts(r, seed) {
   const key = r + ':' + seed;
@@ -1472,7 +1502,11 @@ function renderWorld(lv, att, t) {
   (lv.winds || []).forEach(w => drawWind(w, t));
   (lv.wormholes || []).forEach((w, i) => drawWormhole(w, i));
   (lv.planets || []).forEach((p, i) => drawPlanet(p, i));
-  (lv.blackholes || []).forEach(drawBlackHole);
+  (lv.blackholes || []).forEach(b => {
+    drawBlackHole(b);
+    // aim-screen only: escape-velocity capture-zone ring (see drawCaptureRing)
+    if (G.screen === 'aim' && G.att) drawCaptureRing(b);
+  });
   (lv.asteroids || []).forEach((a, i) => {
     drawRock(a.x, a.y, a.r, i + 1, t * 0.15 * (i % 2 ? 1 : -1));
     if (a.bounce) drawBounceHalo(a, t);

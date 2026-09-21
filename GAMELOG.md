@@ -504,3 +504,12 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
 - Capture-zone rings unchanged (still dashed red on both packs, v0.14).
 - Not headless-testable: whether the Wheyward palette reads as a distinct
   galaxy (vs decoration) on a real phone screen — for Alek's live play-test.
+
+## v0.16 — 2026-09-21 — Wheyward Passage difficulty retune: harder than the original finale
+
+- **The ask:** Alek: "Make the new levels in the new pack for milks run harder. Like harder than the last level on first pack." Standing spec: the easiest Wheyward level should hit harder than the original pack's finale (L48 "The Last Delivery").
+- **Calibration (120 Hz `simulateLaunch` integrator):** Original L48 solves at 6°, speed 400, with a 2° winning angle window and 60 speed window (2 launches, 3 shards). Original hard L36 ("Heart of the Abyss") has a 1° angle window. Wheyward's bar: normal windows ≤2°.
+- **What changed (`levels2.js`):** Retuned all 48 Wheyward normal levels — smaller stations (down to r14), heavier maws (up to m24,000), faster comets/patrols, tighter bounce geometry. Five stubborn levels got surgical passes: L13 Comet Pasture (maw repositioned, 2.5°→2°), L23 Toll Gate (station r16→r14), L32 Moving Curd (station tightened, orbit accelerated), L37 Slingshot (station r18→r16, 2.5°→2°), L40 Comet Blizzard (station r18→r16).
+- **What changed (`hard-levels2.js`):** Regenerated all 12 hard remixes from the retuned normals via `work/make_hard.js` — minimal deltas (station shrinks, maw bumps, comet speed-ups) that preserve the normal's solution path. H36 gets a 5th shard on the solution trajectory instead of geometry changes (the level was at the solvability ceiling).
+- **Verification:** Automated solver (same integrator as flight) confirms a win with all shards in one launch for every level: Wheyward normal 48/48 (windows: min 0°, median 1.5°, avg 1.23°, max 2.5°; 45/48 at ≤2°, L23/L32/L40 at 2.5° — the tightener's solvability limit), Wheyward hard 12/12 (windows: min 0°, median 0.5°, max 2°; every hard ≤ its normal). Regression: original pack holds 48/48 + 12/12. `node --check` clean on all five JS files. Original-pack files (`levels.js`, `hard-levels.js`, `game.js`, `index.html`) untouched — `git diff` shows only `levels2.js` and `hard-levels2.js`.
+- **Not headless-testable:** whether the retuned difficulty feels fair vs. punishing on a real phone — for Alek's live play-test.

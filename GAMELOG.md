@@ -471,3 +471,36 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
 - Not headless-testable: whether the patterns feel right on a real phone —
   vibration motor strength varies by device, and iOS gets nothing at all —
   for Alek's live play-test.
+
+---
+
+## v0.15 — 2026-09-21 — Wheyward Passage: second galaxy, 60 new levels
+
+- **The ask:** Alek beat all 60 levels and wanted a new pack in a different
+  galaxy — "a new setting, a different galaxy or something completely different."
+- **What:** **Wheyward Passage** — "the last milkman's second run" — a full
+  second pack: 48 normal levels + 12 hard variants = 60 playable, in a warm
+  amber/burgundy galaxy (bg `#160a14`/`#241019`/`#3a1220`, amber starfield).
+  - Sectors: Homestead (1–8) · Culture (9–16) · Churn (17–24) · Curdle (25–36) ·
+    Rind (37–48). New mechanics introduced per sector; finale "The Last Drop"
+    forces fold → slingshot → comet thread through a rock wall.
+  - Hard variants remix Curdle levels 25–36 (tighter rocks, hungrier maws,
+    faster comets, fewer launches), keyed the same way as the originals.
+- **Pack selector:** title screen has a galaxy picker (Cosmic Delivery /
+  Wheyward Passage); subtitle, tagline, blurb, backdrop gradient, star colors,
+  and UI accents all follow the active pack. Pack choice persists in
+  `milkrun_pack_v1`.
+- **Separation:** each pack keeps its own stars, ghosts, sector progression,
+  and hard state — `milkrun_save_v2` / `milkrun_hard_v2` for Wheyward; the
+  original `milkrun_save_v1` / `milkrun_hard_v1` are untouched.
+- **Pack abstraction in game.js:** `PACKS` table with
+  `activePack()` / `activeLevels()` / `activeSectors()` / `activeHard()`;
+  every direct `LEVELS` / `SECTORS` / `HARD_LEVELS` / save-key reference
+  routed through it. No physics, capture-ring, or haptics changes.
+- **Verification:** automated solver (same 120 Hz integrator as flight)
+  confirms a 3-star path (delivery + all shards, one launch) for every level:
+  Wheyward 48/48 normal, 12/12 hard; regression re-run on the original pack
+  holds 48/48 + 12/12. `node --check` clean on all six JS files.
+- Capture-zone rings unchanged (still dashed red on both packs, v0.14).
+- Not headless-testable: whether the Wheyward palette reads as a distinct
+  galaxy (vs decoration) on a real phone screen — for Alek's live play-test.

@@ -20,10 +20,14 @@
 
 <div id="overlay-title" class="overlay">
   <div class="panel title-panel">
-    <div class="kicker">THE LAST MILKMAN IN THE GALAXY</div>
+    <div class="kicker" id="pack-tagline">the last milkman in the galaxy</div>
     <h1 class="game-title"><span>MILK</span> RUN</h1>
-    <div class="subtitle">cosmic delivery</div>
-    <p class="blurb">Slingshot your ship around planets.<br>Thread black holes. Mind the comets.<br>Deliver the milk.</p>
+    <div class="subtitle" id="pack-subtitle">cosmic delivery</div>
+    <div class="pack-select" role="group" aria-label="Choose your galaxy">
+      <button id="btn-pack-0" class="pack-btn sel" aria-pressed="true">COSMIC DELIVERY</button>
+      <button id="btn-pack-1" class="pack-btn" aria-pressed="false">WHEYWARD PASSAGE</button>
+    </div>
+    <p class="blurb" id="pack-blurb">Slingshot your ship around planets.<br>Thread black holes. Mind the comets.<br>Deliver the milk.</p>
     <button id="btn-play" class="big-btn">TAP TO START</button>
     <button id="btn-levels-title" class="link-btn">level select</button>
     <div class="hint">touch anywhere &middot; drag back &middot; release to launch</div>
@@ -81,6 +85,8 @@
 
 <script src="levels.js"></script>
 <script src="hard-levels.js"></script>
+<script src="levels2.js"></script>
+<script src="hard-levels2.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

@@ -224,19 +224,40 @@ function simulateLaunch(level, angle, speed, maxT, t0) {
 
 /*__DOM__*/
 /* ================= SAVE ================= */
-const SAVE_KEY = 'milkrun_save_v1';
+// Pack abstraction: two galaxies, fully separate progress.
+// PACKS[0] = Cosmic Delivery (original), PACKS[1] = Wheyward Passage.
+// `save` / `hardSave` always hold the ACTIVE pack's data; switching packs
+// writes the current pack out and loads the other's keys.
+const PACKS = [
+  { id: 'cosmic', name: 'Cosmic Delivery', tagline: 'the last milkman in the galaxy',
+    levels: LEVELS, sectors: SECTORS, hard: HARD_LEVELS,
+    saveKey: 'milkrun_save_v1', hardSaveKey: 'milkrun_hard_v1',
+    theme: { bg: ['#070b22', '#0a1030', '#120a2e'], starDim: '#b9c8ff', starBright: '#eaf6ff' },
+    blurb: 'Slingshot your ship around planets.<br>Thread black holes. Mind the comets.<br>Deliver the milk.' },
+  { id: 'wheyward', name: 'Wheyward Passage', tagline: PACK2.tagline,
+    levels: LEVELS2, sectors: SECTORS2, hard: HARD_LEVELS2,
+    saveKey: PACK2.saveKey, hardSaveKey: 'milkrun_hard_v2',
+    theme: PACK2.theme, blurb: PACK2.blurb },
+];
+const PACK_KEY = 'milkrun_pack_v1';
+function activePack() { return PACKS[G.packIndex]; }
+function activeLevels() { return activePack().levels; }
+function activeSectors() { return activePack().sectors; }
+function activeHard() { return activePack().hard; }
+
 let save = { stars: [], ghosts: [], muted: false };
-// Sized to the level list; old saves of any length are padded, never wiped.
+// Sized to the active pack's level list; old saves of any length are padded, never wiped.
 function sizeSaveArrays() {
-  while (save.stars.length < LEVELS.length) save.stars.push(0);
-  while (save.ghosts.length < LEVELS.length) save.ghosts.push(null);
-  save.stars.length = LEVELS.length;
-  save.ghosts.length = LEVELS.length;
+  const n = activeLevels().length;
+  while (save.stars.length < n) save.stars.push(0);
+  while (save.ghosts.length < n) save.ghosts.push(null);
+  save.stars.length = n;
+  save.ghosts.length = n;
 }
-sizeSaveArrays();
+// (sized in BOOT, after G.packIndex is restored)
 function loadSave() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(activePack().saveKey);
     if (raw) {
       const s = JSON.parse(raw);
       if (Array.isArray(s.stars)) save.stars = s.stars.map(n => Math.max(0, Math.min(3, n | 0)));
@@ -249,16 +270,15 @@ function loadSave() {
   } catch (e) { /* storage unavailable: play session-only */ }
 }
 function writeSave() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {}
+  try { localStorage.setItem(activePack().saveKey, JSON.stringify(save)); } catch (e) {}
 }
 function levelUnlocked(i) { return i === 0 || save.stars[i - 1] > 0; }
 function totalStars() { return save.stars.reduce((a, b) => a + b, 0); }
 
 /* ================= HARD MODE SAVE ================= */
-// Hard variants cover levels 25-36 (HARD_LEVELS keyed by level NUMBER).
+// Hard variants cover levels 25-36 (hard table keyed by level NUMBER).
 // hardSave.stars[k] holds stars for level number HARD_FIRST+1+k; hardSave.ghosts[k]
 // holds that variant's best winning launch vector {vx,vy,stars} | null (hard geometry).
-const HARD_SAVE_KEY = 'milkrun_hard_v1';
 const HARD_FIRST = 24;      // 0-based index of level 25
 const HARD_COUNT = 12;
 let hardSave = { stars: [], ghosts: [] };
@@ -268,10 +288,10 @@ function sizeHardSave() {
   while (hardSave.ghosts.length < HARD_COUNT) hardSave.ghosts.push(null);
   hardSave.ghosts.length = HARD_COUNT;
 }
-sizeHardSave();
+// (sized in BOOT, after G.packIndex is restored)
 function loadHardSave() {
   try {
-    const raw = localStorage.getItem(HARD_SAVE_KEY);
+    const raw = localStorage.getItem(activePack().hardSaveKey);
     if (raw) {
       const s = JSON.parse(raw);
       if (Array.isArray(s.stars)) hardSave.stars = s.stars.map(n => Math.max(0, Math.min(3, n | 0)));
@@ -283,19 +303,66 @@ function loadHardSave() {
   } catch (e) { /* storage unavailable: play session-only */ }
 }
 function writeHardSave() {
-  try { localStorage.setItem(HARD_SAVE_KEY, JSON.stringify(hardSave)); } catch (e) {}
+  try { localStorage.setItem(activePack().hardSaveKey, JSON.stringify(hardSave)); } catch (e) {}
 }
 // A hard variant unlocks once its normal counterpart is beaten.
 function hardUnlocked(i) { return i >= HARD_FIRST && i < HARD_FIRST + HARD_COUNT && save.stars[i] > 0; }
 function totalHardStars() { return hardSave.stars.reduce((a, b) => a + b, 0); }
-loadHardSave();
+// (loaded in BOOT, after G.packIndex is restored)
 
-/* Active level: the normal table, or the hard variant when hard mode is on.
-   G.levelIndex stays the 0-based normal index in both modes; hard variants
-   are keyed by level NUMBER (25-36). G.hardMode is session state —
-   undefined/falsy means off, so normal boot needs no migration. */
+/* Active level: the active pack's normal table, or the hard variant when
+   hard mode is on. G.levelIndex stays the 0-based normal index in both modes;
+   hard variants are keyed by level NUMBER (25-36). G.hardMode is session
+   state — undefined/falsy means off, so normal boot needs no migration. */
 function activeLevel() {
-  return G.hardMode ? HARD_LEVELS[G.levelIndex + 1] : LEVELS[G.levelIndex];
+  return G.hardMode ? activeHard()[G.levelIndex + 1] : activeLevels()[G.levelIndex];
+}
+
+/* Pack switching: persist the current pack, load the other's progress,
+   reset session mode flags, and re-theme. */
+function loadPackChoice() {
+  try {
+    const v = parseInt(localStorage.getItem(PACK_KEY), 10);
+    if (v === 0 || v === 1) G.packIndex = v;
+  } catch (e) {}
+}
+function setPack(i) {
+  if (i === G.packIndex) return;
+  writeSave(); writeHardSave();
+  G.packIndex = i;
+  try { localStorage.setItem(PACK_KEY, String(i)); } catch (e) {}
+  save = { stars: [], ghosts: [], muted: save.muted };
+  hardSave = { stars: [], ghosts: [] };
+  sizeSaveArrays(); sizeHardSave();
+  loadSave(); loadHardSave();
+  G.hardMode = false;
+  const hb = $('btn-hard-toggle');
+  hb.textContent = 'HARD MODE: OFF'; hb.classList.remove('on');
+  applyPackTheme();
+  updateTitleForPack();
+  document.title = 'Milk Run — ' + activePack().name;
+  buildLevelGrid();
+}
+
+// Theme: the canvas backdrop + starfield follow the active pack's palette.
+// The black-hole capture-zone rings stay dashed red on every pack (v0.14).
+function applyPackTheme() {
+  document.body.classList.toggle('pack-wheyward', G.packIndex === 1);
+}
+
+// Title screen reflects the active pack: name, tagline, blurb, selector state.
+function updateTitleForPack() {
+  const p = activePack();
+  $('pack-subtitle').textContent = p.name.toLowerCase();
+  $('pack-tagline').textContent = p.tagline;
+  $('pack-blurb').innerHTML = p.blurb;
+  const b0 = $('btn-pack-0'), b1 = $('btn-pack-1');
+  b0.textContent = PACKS[0].name.toUpperCase();
+  b1.textContent = PACKS[1].name.toUpperCase();
+  b0.classList.toggle('sel', G.packIndex === 0);
+  b1.classList.toggle('sel', G.packIndex === 1);
+  b0.setAttribute('aria-pressed', G.packIndex === 0 ? 'true' : 'false');
+  b1.setAttribute('aria-pressed', G.packIndex === 1 ? 'true' : 'false');
 }
 
 /* ================= AUDIO (all synthesized) ================= */
@@ -480,6 +547,7 @@ function toWorld(px, py) { return [(px - view.ox) / view.scale, (py - view.oy) /
 const G = {
   screen: 'title',       // title | select | intro | aim | flying | paused | win | fail
   pauseFrom: 'aim',
+  packIndex: 0,          // 0 = Cosmic Delivery, 1 = Wheyward Passage
   levelIndex: 0,
   att: null,             // attempt state (pure core)
   launchesLeft: 0,
@@ -555,12 +623,12 @@ function buildLevelGrid() {
   const wrap = $('level-grid'); wrap.innerHTML = '';
   if (G.hardMode) { buildHardGrid(wrap); return; }
   let s = -1;
-  LEVELS.forEach((lv, i) => {
+  activeLevels().forEach((lv, i) => {
     if (lv.sector !== s) {
       s = lv.sector;
       const h = document.createElement('div');
       h.className = 'sector-head';
-      h.textContent = SECTORS[s].name + ' — ' + SECTORS[s].tag;
+      h.textContent = activeSectors()[s].name + ' — ' + activeSectors()[s].tag;
       wrap.appendChild(h);
     }
     const b = document.createElement('button');
@@ -574,16 +642,17 @@ function buildLevelGrid() {
     wrap.appendChild(b);
   });
   const ts = $('total-stars');
-  ts.textContent = totalStars() + ' / ' + (LEVELS.length * 3) + ' ★';
+  ts.textContent = totalStars() + ' / ' + (activeLevels().length * 3) + ' ★';
   ts.classList.remove('hard-total');
 }
 
-// Hard-mode level select: only the 12 Abyss variants, each unlocked by
-// beating its normal counterpart. Stars render in amber hard styling.
+// Hard-mode level select: only the 12 variants of the active pack's sector 4,
+// each unlocked by beating its normal counterpart. Stars render in amber hard styling.
 function buildHardGrid(wrap) {
   const h = document.createElement('div');
   h.className = 'sector-head hard-head';
-  h.textContent = 'Abyss — hard mode · beat the normal level to unlock its variant';
+  const sectorName = activeSectors()[3].name;
+  h.textContent = sectorName + ' — hard mode · beat the normal level to unlock its variant';
   wrap.appendChild(h);
   for (let i = HARD_FIRST; i < HARD_FIRST + HARD_COUNT; i++) {
     const b = document.createElement('button');
@@ -592,7 +661,7 @@ function buildHardGrid(wrap) {
     const st = hardSave.stars[i - HARD_FIRST];
     b.innerHTML = '<span class="lvl-n">' + (i + 1) + '</span>' +
       '<span class="lvl-s">' + '★'.repeat(st) + '<span class="dim">' + '★'.repeat(3 - st) + '</span></span>';
-    b.title = HARD_LEVELS[i + 1].name;
+    b.title = activeHard()[i + 1].name;
     if (unlocked) b.addEventListener('click', () => { sClick(); startLevel(i, true); });
     else b.addEventListener('click', () => sDenied());
     wrap.appendChild(b);
@@ -634,7 +703,7 @@ function startLevel(i, withIntro) {
 // Shown when entering from level select or the win screen — never on retry,
 // so a failed run doesn't make you tap through it again.
 function showIntroCard(lv, i) {
-  const kick = 'LEVEL ' + (i + 1) + ' · ' + SECTORS[lv.sector].name.toUpperCase();
+  const kick = 'LEVEL ' + (i + 1) + ' · ' + activeSectors()[lv.sector].name.toUpperCase();
   $('intro-kicker').innerHTML = G.hardMode ? kick + ' <span class="hard-badge">HARD</span>' : kick;
   $('intro-name').textContent = lv.name;
   let stats = lv.launches + ' launches · par ' + lv.par + ' · ' + lv.shards.length + ' shards';
@@ -712,7 +781,7 @@ function onWin() {
     wstars.appendChild(sp);
   }
   $('win-sub').textContent = lv.name + ' delivered · ' + G.launchesUsed + ' launch' + (G.launchesUsed === 1 ? '' : 'es');
-  const hasNext = G.levelIndex < LEVELS.length - 1 && levelUnlocked(G.levelIndex + 1);
+  const hasNext = G.levelIndex < activeLevels().length - 1 && levelUnlocked(G.levelIndex + 1);
   $('btn-next').classList.toggle('hidden', !hasNext);
   setTimeout(() => showOnly('overlay-win'), 650);
 }
@@ -895,6 +964,8 @@ $('btn-pause').addEventListener('click', () => togglePause());
 $('btn-play').addEventListener('click', () => { AudioSys.init(); AudioSys.startAmbient(); sClick(); toSelect(); });
 $('btn-fly').addEventListener('click', dismissIntro);
 $('btn-levels-title').addEventListener('click', () => { sClick(); toSelect(); });
+$('btn-pack-0').addEventListener('click', () => { sClick(); setPack(0); });
+$('btn-pack-1').addEventListener('click', () => { sClick(); setPack(1); });
 $('btn-back-title').addEventListener('click', () => { sClick(); toTitle(); });
 $('btn-resume').addEventListener('click', () => togglePause());
 $('btn-restart2').addEventListener('click', restartLevel);
@@ -1010,8 +1081,9 @@ function rr(x, y, w, h, r) {
 }
 
 function drawBackground() {
+  const th = activePack().theme;
   const g = ctx.createLinearGradient(0, 0, 0, CH);
-  g.addColorStop(0, '#070b22'); g.addColorStop(0.55, '#0a1030'); g.addColorStop(1, '#120a2e');
+  g.addColorStop(0, th.bg[0]); g.addColorStop(0.55, th.bg[1]); g.addColorStop(1, th.bg[2]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
   const shx = G.shake > 0 ? (Math.random() - .5) * 14 * G.shake : 0;
   const shy = G.shake > 0 ? (Math.random() - .5) * 14 * G.shake : 0;
@@ -1023,7 +1095,7 @@ function drawBackground() {
       x += shx * par;
       const a = 0.35 + 0.4 * Math.abs(Math.sin(G.time * 1.5 + s.tw));
       ctx.globalAlpha = a * (0.5 + l * 0.25);
-      ctx.fillStyle = l === 2 ? '#eaf6ff' : '#b9c8ff';
+      ctx.fillStyle = l === 2 ? th.starBright : th.starDim;
       ctx.fillRect(x, y, s.s, s.s);
     }
   }
@@ -1369,7 +1441,7 @@ function drawHUD() {
   ctx.fillStyle = 'rgba(234,246,255,0.95)'; ctx.font = '700 18px -apple-system, "Segoe UI", sans-serif';
   ctx.fillText(fitText((G.levelIndex + 1) + ' · ' + lv.name.toUpperCase(), tmaxW), tcx, 14);
   ctx.fillStyle = 'rgba(160,180,220,0.7)'; ctx.font = '12px -apple-system, "Segoe UI", sans-serif';
-  ctx.fillText(fitText(SECTORS[lv.sector].name.toUpperCase() + ' SECTOR · PAR ' + lv.par, tmaxW), tcx, 38);
+  ctx.fillText(fitText(activeSectors()[lv.sector].name.toUpperCase() + ' SECTOR · PAR ' + lv.par, tmaxW), tcx, 38);
   if (lv.tip && G.launchesUsed === 0 && G.screen === 'aim') {
     // tip sits below the bottles/shard row so long tips never overlap them
     ctx.fillStyle = 'rgba(255,226,127,0.9)'; ctx.font = '13px -apple-system, "Segoe UI", sans-serif';
@@ -1568,7 +1640,12 @@ function render() {
 }
 
 /* ================= BOOT ================= */
-loadSave();
+loadPackChoice();
+sizeSaveArrays(); sizeHardSave();
+loadSave(); loadHardSave();
+applyPackTheme();
+updateTitleForPack();
+document.title = 'Milk Run — ' + activePack().name;
 refreshMuteBtn();
 initStars();
 resize();

@@ -124,3 +124,26 @@ html, body {
   .game-title { font-size: 48px; }
   .blurb { display: none; }
 }
+
+/* ---------- Pack selector (title screen) ---------- */
+.pack-select { display: flex; gap: 10px; justify-content: center; margin: 4px 0 12px; }
+.pack-btn {
+  flex: 1; max-width: 220px; padding: 12px 8px; font-size: 12px; letter-spacing: 2px; font-weight: 800;
+  color: #8fa4d8; background: rgba(20, 30, 70, 0.5); border: 2px solid #2a3a6e; border-radius: 10px;
+  cursor: pointer; transition: all 0.2s;
+}
+.pack-btn.sel {
+  color: #fff; background: linear-gradient(180deg, #2a4a9e, #1a2e6e);
+  border-color: #6a8adf; box-shadow: 0 0 16px rgba(106, 138, 223, 0.4);
+}
+.pack-btn:active { transform: scale(0.96); }
+
+/* ---------- Wheyward Passage theme ---------- */
+body.pack-wheyward .subtitle { color: #e0aa7e; }
+body.pack-wheyward .pack-btn { color: #c98f6a; background: rgba(70, 30, 20, 0.5); border-color: #6e3a2a; }
+body.pack-wheyward .pack-btn.sel {
+  color: #fff; background: linear-gradient(180deg, #9e4a2a, #6e2e1a);
+  border-color: #df8a5a; box-shadow: 0 0 16px rgba(223, 138, 90, 0.4);
+}
+body.pack-wheyward .game-title span { color: #ffca7f; }
+body.pack-wheyward .kicker { color: #c98f6a; }

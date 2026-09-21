@@ -1,7 +1,11 @@
-# MILK RUN — Cosmic Delivery
+# MILK RUN
 
 You are the last milkman in the galaxy. Slingshot your delivery ship around
 planets, thread black holes, ride wormholes — and deliver the milk.
+
+Two galaxies to deliver in: **Cosmic Delivery** (the original run) and
+**Wheyward Passage** (a new 60-level pack in a warm amber galaxy). Pick your
+galaxy on the title screen — each keeps its own stars, ghosts, and progress.
 
 ## Play
 
@@ -36,17 +40,22 @@ canvas, all sound is synthesized with WebAudio.
 
 ## Stars & progress
 
-48 levels across 5 sectors (Drift / Rogue / Void / Abyss / Maelstrom). Each level awards up to
-3 stars: 1 for delivery, +1 for finishing within par launches, +1 for
-collecting every shard. Progress and stars persist in `localStorage`.
+**Cosmic Delivery:** 48 levels across 5 sectors (Drift / Rogue / Void / Abyss / Maelstrom).
+**Wheyward Passage:** 48 levels across 5 sectors (Homestead / Culture / Churn / Curdle / Rind).
+Each level awards up to 3 stars: 1 for delivery, +1 for finishing within par
+launches, +1 for collecting every shard. Progress and stars persist in
+`localStorage` — separately per galaxy (`milkrun_save_v1` vs `milkrun_save_v2`).
 
-**Hard Mode:** beating an Abyss level (25–36) unlocks its harder remix via the
+**Hard Mode:** beating a sector-4 level (25–36) unlocks its harder remix via the
 toggle on the level-select screen. Hard variants keep their own stars and
-their own best-shot ghosts.
+their own best-shot ghosts (separate keys per galaxy).
 
 ## Tech
 
-- `index.html` + `style.css` + `game.js` + `levels.js` + `hard-levels.js`. Zero dependencies.
+- `index.html` + `style.css` + `game.js` + `levels.js` + `hard-levels.js` +
+  `levels2.js` + `hard-levels2.js`. Zero dependencies.
+- Pack abstraction in `game.js`: `PACKS` table, `activePack()` / `activeLevels()` /
+  `activeSectors()` / `activeHard()`; per-pack save keys, themes, and title copy.
 - Fixed-timestep physics (120 Hz); the aim preview uses the exact same
   integrator as flight (240 steps ≈ 3 s).
 - Newtonian gravity from planets and black holes (F = G·m/r², softened).

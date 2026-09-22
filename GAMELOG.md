@@ -513,3 +513,35 @@ Surge · 41 Against the Wind · 42 Sentry Line · 43 Trade Winds · 44 Downburst
 - **What changed (`hard-levels2.js`):** Regenerated all 12 hard remixes from the retuned normals via `work/make_hard.js` — minimal deltas (station shrinks, maw bumps, comet speed-ups) that preserve the normal's solution path. H36 gets a 5th shard on the solution trajectory instead of geometry changes (the level was at the solvability ceiling).
 - **Verification:** Automated solver (same integrator as flight) confirms a win with all shards in one launch for every level: Wheyward normal 48/48 (windows: min 0°, median 1.5°, avg 1.23°, max 2.5°; 45/48 at ≤2°, L23/L32/L40 at 2.5° — the tightener's solvability limit), Wheyward hard 12/12 (windows: min 0°, median 0.5°, max 2°; every hard ≤ its normal). Regression: original pack holds 48/48 + 12/12. `node --check` clean on all five JS files. Original-pack files (`levels.js`, `hard-levels.js`, `game.js`, `index.html`) untouched — `git diff` shows only `levels2.js` and `hard-levels2.js`.
 - **Not headless-testable:** whether the retuned difficulty feels fair vs. punishing on a real phone — for Alek's live play-test.
+
+## v0.17 — 2026-09-22 — orbiting-station aim telegraph
+
+- **The gap:** orbiting stations (11 levels across both packs: L11/L32 teach +
+  demand, Wheyward L32 "Moving Curd", the H32 hard remixes) were the last
+  mover with no aim-screen telegraph. Patrols got timing dots in v0.12 and
+  black holes got capture rings in v0.14; stations only showed their *current*
+  position while the 3-second preview silently accounted for their motion —
+  the player had to eyeball the orbit and its direction to time a shot.
+- **What:** on the aim screen, an orbiting station now paints a faint dashed
+  cyan circle for its orbit path (*where* it travels) plus 14 fading cyan dots
+  marking where it WILL BE over the next ~3.5 s (same 14 × 0.25 s cadence as
+  the patrol telegraph, cyan for stations vs amber for patrols, so direction
+  of travel reads at a glance). The dots are computed from the pure
+  `stationPos` against the attempt clock (`att.t`) — the exact clock the
+  station body, the flight physics, and the preview all use — so the
+  telegraph can never desync from the real station.
+- Aim-screen only (intro/paused/flying stay clean), mirroring the v0.12/v0.14
+  guards: `lv.station.orbit && G.screen === 'aim' && G.att`. Zero physics,
+  level-geometry, save, or localStorage changes — the v0.9/v0.16 solver
+  verifications still hold, so the solver was not re-run.
+- Verified headlessly with a DOM-shim harness loading the real game.js
+  (19/19): 15 telegraph arcs (1 dashed path at orbit.radius + 14 dots) on
+  pack-0 L11; dots lie on the orbit circle with strictly decreasing
+  alpha/non-increasing radius; dots advance with `att.t` and dot k=1 matches
+  `stationPos(lv, att.t + 0.25)` exactly; silent on flying/paused/intro
+  screens, with no attempt, and on orbit-less levels; fires on a Wheyward
+  orbit level and a hard-mode orbit remix; 240-render sweep (all levels, both
+  packs, normal + hard) throws nothing and telegraphs exactly the 10
+  orbiting-station levels. `node --check` clean on all five JS files.
+- Not headless-testable: whether the dashed orbit circle reads as a path
+  rather than decoration on a real phone screen — for Alek's live play-test.

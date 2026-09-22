@@ -1570,6 +1570,31 @@ function drawPatrolTelegraph(p, ct) {
   ctx.restore();
 }
 
+// Orbiting-station telegraph: on the aim screen, the dashed circle shows *where*
+// an orbiting station travels and the fading cyan dots show where it WILL BE
+// over the next ~3.5 s (same cadence as the patrol telegraph, cyan for stations
+// vs amber for patrols), so timing shots to a moving station can be judged at
+// a glance instead of eyeballing its orbit. Aim-screen only, pure render layer
+// (stationPos is pure); no physics, level, or save changes.
+function drawOrbitTelegraph(lv, ct) {
+  const o = lv.station.orbit;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(127,226,255,0.30)'; ctx.lineWidth = 2;
+  ctx.setLineDash([8, 10]);
+  ctx.beginPath(); ctx.arc(o.cx, o.cy, o.radius, 0, 6.283); ctx.stroke();
+  ctx.setLineDash([]);
+  const N = 14, DT = 0.25;   // 14 dots x 0.25 s ~= 3.5 s, just past the preview window
+  for (let k = 1; k <= N; k++) {
+    const q = stationPos(lv, ct + k * DT);
+    const f = k / N;
+    ctx.fillStyle = 'rgba(127,226,255,' + (0.55 - f * 0.47).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, Math.max(2, q.r * (0.5 - f * 0.18)), 0, 6.283);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function renderWorld(lv, att, t) {
   (lv.winds || []).forEach(w => drawWind(w, t));
   (lv.wormholes || []).forEach((w, i) => drawWormhole(w, i));
@@ -1597,6 +1622,9 @@ function renderWorld(lv, att, t) {
   const gotN = att ? att.shardsGot.size : 0;
   drawStation(stationPos(lv, att ? att.t : t), t,
               gateN ? { remaining: Math.max(0, gateN - gotN) } : null);
+  // aim-screen only: orbiting-station telegraph (see drawOrbitTelegraph)
+  if (lv.station && lv.station.orbit && G.screen === 'aim' && G.att)
+    drawOrbitTelegraph(lv, G.att.t);
   if (att && !att.dead) {
     drawTrail(att);
     drawShip(att.x, att.y, att.vx, att.vy, att.flying, t);
